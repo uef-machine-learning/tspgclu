@@ -1,9 +1,25 @@
+#ifndef NN_GRAPH_H
+#define NN_GRAPH_H
 
-// int HeapCmp1(void *a, void *b, void *info) {
-  // float diff = (((gNode *)a)->nearest_dist - ((gNode *)b)->nearest_dist);
-  // return (diff > 0 ? 1 : diff == 0 ? 0 : -1);
-// }
-// #define HeapCmp(a, b, c) HeapCmp1(a, b, c)
+#include "linked_list.h"
+
+typedef struct gNode {
+  linkedList *neighbors;
+  int numNeighbors;
+  int maxNeighbors;
+  double weight_sum;
+  int size;
+  // <id> of point which nearest neighbors this represents
+  int id;
+} gNode;
+
+typedef struct nnGraph {
+  int size;
+  /*void * content;*/
+  /*linkedListNode* next;*/
+  gNode *nodes;
+  double total_weight;
+} nnGraph;
 
 /*void addNode();*/
 /*void removeNode();*/
@@ -20,86 +36,29 @@ nnGraph *init_nnGraph(int numNodes) {
   int maxNeighbors = 200;
   nnGraph *g = (nnGraph *)malloc(sizeof(nnGraph));
   g->nodes = (gNode *)malloc(sizeof(gNode) * numNodes);
-
-  auto cmp = [](gItem *a, gItem *b) { return a->id < b->id; };
   for (int i = 0; i < numNodes; i++) {
     /*g->nodes[i].neighbors = (gItem*) malloc(sizeof(gItem)*maxNeighbors);*/
     g->nodes[i].size = 0;
-    g->nodes[i].weight = 1;
-    g->nodes[i].outdated = 0;
-    g->nodes[i].internalSum = 0.0;
-    
     g->nodes[i].id = i;
-    g->nodes[i].visited = -1;
     g->nodes[i].maxNeighbors = maxNeighbors;
 
     g->nodes[i].neighbors = initLinkedList();
-    // std::set<int> odd = { 1, 3, 5 };
-    // g->nodes[i].nset = new std::set<int>;
-    g->nodes[i].nset = new std::set<gItem *, custom_compare>;
-    g->nodes[i].nearesth = new giHeap();
-
-    g->nodes[i].stash = new std::vector<int>;
-    g->nodes[i].stash->push_back(i);
-    // gItem*
   }
   g->size = numNodes;
   return g;
 }
 
-gItem *nng_add_mutual_neighbor2(nnGraph *g, int p1, int p2, float dist) {
-  gNode *node = &g->nodes[p1];
-  /*gItem* neighbors = node->neighbors;*/
-  assert(p1 != p2);
+int nng_neighbor_exists(nnGraph *g, int p1, int p2) {
+  gNode *node;
+  node = &g->nodes[p1];
 
-  gItem *gi_p1 = (gItem *)malloc(sizeof(gItem));
-  gItem *gi_p2 = (gItem *)malloc(sizeof(gItem));
-  
-  gi_p1->cost = -1;
-  gi_p1->visited = -1;
-  gi_p1->heapp = -1;
-  
-  gi_p2->cost = -1;
-  gi_p2->visited = -1;
-  gi_p2->heapp = -1;
-
-  
-  float cost;
-  int visited;
-  gItem *pair;
-  int heapp; // Pointer to heap position 
-
-  gi_p1->visited = 0;
-  gi_p2->visited = 0;
-
-  gi_p1->id = p2;
-  gi_p1->dist = dist;
-
-  gi_p2->id = p1;
-  gi_p2->dist = dist;
-  
-  gi_p2->pair = gi_p1;
-  gi_p1->pair = gi_p2;
-
-  auto iter1 = g->nodes[p1].nset->insert(gi_p1);
-  auto iter2 = g->nodes[p2].nset->insert(gi_p2);
-
-  // Insertion took place
-  if (iter1.second) {
-    gi_p1->iterO = iter2.first;
-    gi_p2->iterO = iter1.first;
-
-    if (g_use_heap > 0) {
-      g->nodes[p1].nearesth->insert((void *)gi_p1, &(gi_p1->heapp));
-      g->nodes[p2].nearesth->insert((void *)gi_p2, &(gi_p2->heapp));
+  for (int j = 0; j < node->neighbors->size; j++) {
+    gItem *gi = (gItem *)ll_get_item(node->neighbors, j);
+    if (gi->id == p2) {
+      return 1;
     }
-
-  } else {
-    free(gi_p1);
-    free(gi_p2);
   }
-
-  return gi_p1;
+  return 0;
 }
 
 void nng_add_neighbor(nnGraph *g, int p1, int p2, float dist) {
@@ -111,11 +70,8 @@ void nng_add_neighbor(nnGraph *g, int p1, int p2, float dist) {
   gi->id = p2;
   gi->dist = dist;
 
-  g->nodes[p1].nset->insert(gi);
-
   // ll_remove_node(g->nodes[p1].neighbors, p2);
-  // ll_add_node(node->neighbors, (void *)gi);
-
+  ll_add_node(node->neighbors, (void *)gi);
   /*ll_add_node_if_not_exist(node->neighbors,(void*) gi);*/
 
   node->size++;
@@ -127,19 +83,7 @@ void nng_add_mutual_neighbor(nnGraph *g, int p1, int p2, float dist) {
 }
 
 void nng_remove_neighbor(nnGraph *g, int p1, int p2) {
-  // ll_remove_node2(g->nodes[p1].neighbors, p2);
-
-  gItem *gi = (gItem *)malloc(sizeof(gItem));
-  gi->id = p2;
-  auto it = g->nodes[p1].nset->find(gi);
-  if (it != g->nodes[p1].nset->end()) {
-    g->nodes[p1].nset->erase(it);
-    free(*it);
-  }
-  
-  // free(gi); //TODO
-
-  // g->nodes[p1].nset->insert(gi);
+  ll_remove_node2(g->nodes[p1].neighbors, p2);
   /*node->size--;*/
 }
 
@@ -152,28 +96,14 @@ int nng_has_neighbor(nnGraph *g, int p1, int p2) {
   return 1;
 }
 
-// https://thispointer.com/how-to-access-element-by-index-in-a-set-c/
-template <typename T> std::pair<T, bool> getNthElement(std::set<T> &searchSet, int n) {
-  std::pair<T, bool> result;
-  if (searchSet.size() > n) {
-    result.first = *(std::next(searchSet.begin(), n));
-    result.second = true;
-  } else
-    result.second = false;
-  return result;
-}
-
-gItem *nng_get_neighbor2(nnGraph *g, int p1, int idx) {
-  // gItem *gi = (gItem *)ll_get_item(g->nodes[p1].neighbors, idx);
-  // std::pair<gItem *, bool> result = getNthElement(*(g->nodes[p1].nset), 3);
-
-  gItem *gi = *(std::next(g->nodes[p1].nset->begin(), idx));
-  return gi;
-}
-
 int nng_get_neighbor(nnGraph *g, int p1, int idx) {
   gItem *gi = (gItem *)ll_get_item(g->nodes[p1].neighbors, idx);
   return gi->id;
+}
+
+float nng_get_weight(nnGraph *g, int p1, int idx) {
+  gItem *gi = (gItem *)ll_get_item(g->nodes[p1].neighbors, idx);
+  return gi->dist;
 }
 
 int nng_num_neighbors(nnGraph *g, int p1) { return g->nodes[p1].neighbors->size; }
@@ -184,41 +114,13 @@ void write_nngraph_to_file(nnGraph *g, const char *fn) {
   gNode *node;
   for (int i = 0; i < g->size; i++) {
     node = &g->nodes[i];
-    int num_neigh = node->nset->size();
-    fprintf(fp, "%d %d", node->id, num_neigh);
-    for (int j = 0; j < num_neigh; j++) {
-      // gItem *gi = (gItem *)ll_get_item(node->neighbors, j);
-      gItem *gi = nng_get_neighbor2(g, i, j);
-
-      fprintf(fp, " %d", gi->id);
-    }
-    for (int j = 0; j < num_neigh; j++) {
-      // gItem *gi = (gItem *)ll_get_item(node->neighbors, j);
-      gItem *gi = nng_get_neighbor2(g, i, j);
-      fprintf(fp, " %f", gi->dist);
-    }
-
-    fprintf(fp, "\n");
-  }
-  fclose(fp);
-}
-
-void write_nngraph_to_file_old(nnGraph *g, const char *fn) {
-  FILE *fp;
-  fp = fopen(fn, "w");
-  gNode *node;
-  for (int i = 0; i < g->size; i++) {
-    node = &g->nodes[i];
     fprintf(fp, "%d %d", node->id, node->neighbors->size);
     for (int j = 0; j < node->neighbors->size; j++) {
-      // gItem *gi = (gItem *)ll_get_item(node->neighbors, j);
-      gItem *gi = nng_get_neighbor2(g, i, j);
-
+      gItem *gi = (gItem *)ll_get_item(node->neighbors, j);
       fprintf(fp, " %d", gi->id);
     }
     for (int j = 0; j < node->neighbors->size; j++) {
-      // gItem *gi = (gItem *)ll_get_item(node->neighbors, j);
-      gItem *gi = nng_get_neighbor2(g, i, j);
+      gItem *gi = (gItem *)ll_get_item(node->neighbors, j);
       fprintf(fp, " %f", gi->dist);
     }
 
@@ -227,78 +129,129 @@ void write_nngraph_to_file_old(nnGraph *g, const char *fn) {
   fclose(fp);
 }
 
-gItem *find_greedy_path(DataSet *data, nnGraph *g, int source, int target) {
-  gNode *node;
-  node = &g->nodes[source];
-
-  gItem *ti = ll_get_node_if_exist(g->nodes[source].neighbors, target);
-  float d_ab;
-  if (ti == NULL) {
-    d_ab = distance(data, source, target);
-    /*terminal_error("ll_get_node_if_exist");*/
-  } else {
-    d_ab = ti->dist;
+void debug_dump_graph(nnGraph *g) {
+  printf("==============\n");
+  printf("n=%d\n", nng_num_neighbors(g, 0));
+  fflush(stdout);
+  for (int i_node = 0; i_node < g->size; i_node++) {
+    printf("[%d] ", i_node);
+    for (int i = 0; i < nng_num_neighbors(g, i_node); i++) {
+      printf(" %d (%f)", nng_get_neighbor(g, i_node, i), nng_get_weight(g, i_node, i));
+    }
+    printf("\n");
   }
-
-  for (int j = 0; j < node->neighbors->size; j++) {
-    gItem *gi = (gItem *)ll_get_item(node->neighbors, j);
-    if (gi->id == target) {
-      continue;
-    }
-    gItem *neighbor = ll_get_node_if_exist(g->nodes[gi->id].neighbors, target);
-    if (neighbor == NULL) {
-      /*printf("nn:NULL ");*/
-    }
-    if (neighbor != NULL) {
-      /*printf("nn:%d %f, ",neighbor->id,neighbor->dist);*/
-      if (d_ab > neighbor->dist) {
-        return neighbor;
-      }
-    }
-  }
-
-  return NULL;
+  printf("==============\n");
 }
 
-gItem *find_greedy_path2(DataSet *data, nnGraph *g, int source, int target) {
-  gNode *node;
-  node = &g->nodes[source];
+double get_max_weight(nnGraph *graph) {
+  gNode *nodeA;
+  gItem *gi;
+  double maxweight = -DBL_MAX;
+  for (int i = 0; i < graph->size; i++) {
+    nodeA = &graph->nodes[i];
+    gi = (gItem *)ll_get_item(nodeA->neighbors, nodeA->neighbors->size - 1);
+    for (int j = 0; j < nodeA->neighbors->size; j++) {
+      gi = (gItem *)ll_get_item(nodeA->neighbors, j);
 
-  gItem *ti = ll_get_node_if_exist(g->nodes[source].neighbors, target);
-  float d_ab;
-  if (ti == NULL) {
-    d_ab = distance(data, source, target);
-    /*terminal_error("ll_get_node_if_exist");*/
-  } else {
-    d_ab = ti->dist;
-  }
-
-  float prevdist = d_ab;
-  for (int j = 0; j < node->neighbors->size; j++) {
-    gItem *gi = (gItem *)ll_get_item(node->neighbors, j);
-    if (gi->id == target) {
-      continue;
-    }
-
-    /*float cb = distance(data,gi->id,target);*/
-    /*if(cb < prevdist) {*/
-    /*return gi;*/
-
-    /*}*/
-
-    gItem *neighbor = ll_get_node_if_exist(g->nodes[gi->id].neighbors, target);
-    if (neighbor == NULL) {
-      /*printf("nn:NULL ");*/
-    }
-    if (neighbor != NULL) {
-      /*printf("nn:%d %f, ",neighbor->id,neighbor->dist);*/
-      if (d_ab > neighbor->dist) {
-        return neighbor;
+      if (gi->dist > maxweight) {
+        maxweight = gi->dist;
       }
     }
   }
+  return maxweight;
+}
 
-  return NULL;
+nnGraph *read_ascii_graphf(const char *fname) {
+
+  int N = 0;
+  float buf;
+  FILE *fp;
+  int max_chars = 100000;
+  char line[max_chars + 1];
+  char *pbuf;
+  int i_elem = 0;
+  int dim = 0;
+  int id;
+  int numlinks;
+  int links[30000];
+  float weights[30000];
+
+  printf("Reading ascii graph dataset from file %s\n", fname);
+  fp = fopen(fname, "r");
+  if (!fp) {
+    terminal_error("File does not exist\n");
+  }
+
+  N = count_lines(fp);
+  printf("lines=%d\n", N);
+  nnGraph *graph = init_nnGraph(N);
+
+  // Get number of elements
+  char *ok = fgets(line, max_chars, fp);
+  if (ok == NULL) {
+    terminal_error("");
+  }
+  pbuf = line;
+  //TODO: Delete
+  for (i_elem = 0;; i_elem++) {
+    if (*pbuf == '\n')
+      break;
+    buf = strtof(pbuf, &pbuf);
+    // printf(" %f", buf);
+  }
+  dim = i_elem;
+  printf("\nnum_vectors=%d\n", N);
+
+  fseek(fp, 0L, SEEK_SET);
+  for (int i_vector = 0; i_vector < N; i_vector++) {
+    printf("i_vector=%d\n",i_vector);
+    // for (int i_vector = 0; i_vector < 10; i_vector++) {
+    char *ok = fgets(line, max_chars, fp);
+    pbuf = line;
+    if (ok == NULL) {
+      terminal_error("premature end of file");
+    }
+
+    id = (int)strtof(pbuf, &pbuf);
+    numlinks = (int)strtof(pbuf, &pbuf);
+    // printf("id=%d nl=%d ", id, numlinks);
+
+    // printf("links: ");
+    for (int i = 0; i < numlinks; i++) {
+      if (*pbuf == '\n') {
+        terminal_error("Got too few elements");
+      }
+
+      buf = strtof(pbuf, &pbuf);
+      // printf("%f ", buf);
+      links[i] = (int)buf;
+    }
+
+    // printf("weights: ");
+    for (int i = 0; i < numlinks; i++) {
+      if (*pbuf == '\n') {
+        terminal_error("Got too few elements");
+      }
+
+      buf = strtof(pbuf, &pbuf);
+      weights[i] = buf;
+      // printf("%f ", buf);
+    }
+    // printf("\n", buf);
+
+    for (int i = 0; i < numlinks; i++) {
+      // printf("add link: [%d] = (%f)> [%d]\n", id, weights[i], links[i]);
+      if (!nng_neighbor_exists(graph, id, links[i])) {
+        nng_add_neighbor(graph, id, links[i], weights[i]);
+      }
+
+      if (!nng_neighbor_exists(graph, links[i], id)) {
+        nng_add_neighbor(graph, links[i], id, weights[i]);
+      }
+    }
+    // printf("\n");
+  }
+  return graph;
 }
 
 void test_nn_graph() {
@@ -320,20 +273,7 @@ void test_nn_graph() {
   for (int i = 0; i < nng_num_neighbors(g, 0); i++) {
     printf(" %d", nng_get_neighbor(g, 0, i));
   }
-
-  printf(" | ");
-  for (int i = 0; i < nng_num_neighbors(g, 0); i++) {
-    gItem *gi = nng_get_neighbor2(g, 0, i);
-    printf(" %d", gi->id);
-  }
-
-  printf(" | ");
-  for (auto gi : *(g->nodes[0].nset)) {
-    printf(" %d", gi->id);
-    // use f here
-  }
-
   printf("\n");
 }
 
-
+#endif
