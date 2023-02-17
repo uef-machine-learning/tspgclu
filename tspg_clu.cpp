@@ -1,330 +1,207 @@
 
-int CmpDistP(void *a, void *b, void *info) {
-  float diff = (((gNode *)a)->nearest_dist - ((gNode *)b)->nearest_dist);
-  return (diff > 0 ? 1 : diff == 0 ? 0 : -1);
-}
+template <typename ORACLE> class TSPclu {
+private:
+  const ORACLE &oracle;
+  int size;
+  int num_tsp;
+  int K;
 
-void merge_graphs_knn(nnGraph *g, kNNGraph *kNN) {
+  // int update(int p1, int p2) {
 
-  int idx = 0;
-  int K = 0;
-  K = kNN->k;
+  // float dist = oracle(p1, p2);
+  // return 1;
+  // }
 
-  // fprintf(fp,"%d\n",kNN->size);
-  for (int data_i = 0; data_i < kNN->size; data_i++) {
+public:
+  // const vector<KNN> &getNN() const { return nn; }
 
-    int idA = kNN->list[data_i].id;
-    // fprintf(fp,"%u",kNN->list[data_i].id);
-    // fprintf(fp," %d",K);
+  // long long int getCost() const { return cost; }
 
-    // Neighbors
-    for (int nn_i = 0; nn_i < kNN->k; nn_i++) {
-      int idB = (int)get_kNN_item_id(kNN, data_i, nn_i);
-      float dist = get_kNN_item_dist(kNN, data_i, nn_i);
-      nng_add_mutual_neighbor2(g, idA, idB, dist);
-      // fprintf(fp," %i",idx);
-    }
-    // Distances to neighbors
-    // for(int nn_i = 0; nn_i < kNN->k; nn_i++) {
-    // float dist = get_kNN_item_dist(kNN,data_i,nn_i);
-    // fprintf(fp," %f",dist);
+  TSPclu(int K_, int num_tsp_, const ORACLE &oracle_) : oracle(oracle_), K(K_), num_tsp(num_tsp_) {
+    size = oracle.size;
+
+    // printf("N=%d, %d K=%d\n", N, oracle.N, K);
+    printf("N=%d K=%d num_tsp=%d\n", size, K, num_tsp);
+  }
+
+  void runClustering() {
+    float a;
+    Timer t;
+    t.tick();
+    // for (int i = 0; i < 1e9; i++) {
+    // a += oracle(i, i / 2);
     // }
-    // fprintf(fp,"\n");
+    nnGraph * g;
+    g = createTSPg(NULL);
+    t.tuck("end");
+    
+    printf("a=%f\n", a);
   }
+
+  nnGraph *createTSPg(nnGraph *g);
+  void rpdiv(int *ind_arr, int *ind_arr2);
+  void rpdivRecurseQueue(linkedList *qu, queueItem *qi);
+  // void runDistTest() {
+  // float a;
+  // Timer t;
+  // t.tick();
+  // for (int i = 0; i < 1e9; i++) {
+  // a += oracle(i, i / 2);
+  // }
+  // t.tuck("end");
+  // printf("a=%f\n", a);
+  // }
+
+  // void runDistTest2() {
+  // float a;
+  // Timer t;
+  // t.tick();
+  // for (int i = 0; i < 1e9; i++) {
+  // // a += i * (i/2) - 3.2;
+  // a += dist33(i,i/2);
+  // }
+  // t.tuck("end");
+  // printf("a=%f\n", a);
+  // }
+
+  // void runDistTestFref(float (*fun_ptr)(int,int)) {
+  // float a;
+  // Timer t;
+  // t.tick();
+  // for (int i = 0; i < 1e9; i++) {
+  // a += (*fun_ptr)(i, i / 2);
+  // }
+  // t.tuck("end");
+  // printf("b=%f\n", a);
+  // }
+};
+
+// Random point division for TSP solution
+// recursion implemented using a queue
+template <typename ORACLE> void TSPclu<ORACLE>::rpdiv(int *ind_arr, int *ind_arr2) {
+  linkedList *qu; // queue
+  qu = initLinkedList();
+
+  linkedList *ll = initLinkedList();
+  int *tmp = (int *)malloc(sizeof(int));
+  *tmp = -1;
+  linkedListNode *firstnode = ll_add_node(ll, tmp);
+
+  queueItem *qi;
+  queueItem *qiroot = (queueItem *)malloc(sizeof(queueItem));
+  // qiroot->data = data; //TODO:??
+  qiroot->ll = ll;
+  qiroot->llnode = NULL;
+  qiroot->input_arr = ind_arr;
+  qiroot->input_arr2 = ind_arr2;
+  qiroot->input_arr_size = oracle.size;
+  qiroot->is_left_child = 1;
+  qiroot->uncle_id = -1;
+  linkedListNode *top;
+
+  qiroot->llnode = ll->root;
+
+  ll_add_node(qu, qiroot);
+  int i = 1;
+  while (qu->size > 0) {
+    // printf("i=%d qu->size=%d\n",i,qu->size);
+    top = ll_pop_first_node(qu);
+    qi = (queueItem *)top->content;
+    rpdivRecurseQueue(qu, qi);
+    free(top);
+    free(qi);
+    i++;
+  }
+  ll_free_list(ll);
 }
 
-void graph_stat(nnGraph *g) {
-  long int edge_count = 0;
-  for (int i = 0; i < g->size; i++) {
-    gNode *nodeA = &g->nodes[i];
-    for (auto gi : *(nodeA->nset)) {
-      edge_count++;
-    }
+// nnGraph *template <typename ORACLE> TSPclu<ORACLE>::createTSPg(nnGraph *g) {
+template <typename ORACLE> nnGraph *TSPclu<ORACLE>::createTSPg(nnGraph *g) {
+  kNNGraph *knng = NULL;
+  int update_count = 0;
+  float update_portion = 0.0;
+
+  int k_increment = 2;
+  int run_nndes = 0;
+  float update_portion_nndes = 0;
+  int i_iter;
+
+  // Two copies of tree. Optimization to avoid memory alloc/dealloc in future steps
+  int *ind_arr = (int *)safemalloc(sizeof(int) * oracle.size);
+  int *ind_arr2 = (int *)safemalloc(sizeof(int) * oracle.size);
+
+  linkedList *ll = initLinkedList();
+
+  if (g == NULL) {
+    g = init_nnGraph(size);
   }
-  float edges_per_node = edge_count / ((float)g->size);
-  printf("edge_count=%ld edges_per_node=%f", edge_count, edges_per_node);
+
+  // Calculate initial mean vectors if possible
+
+  // TODO:
+  // if (g->data->type == T_NUMERICAL && g_options.mean_calculation) {
+  // for (int i_data = 0; i_data < data->size; i_data++) {
+  // g->nodes[i_data].mean = (float *)malloc(sizeof(float) * data->dimensionality);
+  // for (int i_dim = 0; i_dim < data->dimensionality; i_dim++) {
+  // g->nodes[i_data].mean[i_dim] = data->data[i_data][i_dim];
+  // }
+  // }
+  // }
+
+  float total_dist_sum = 0.0;
+  for (i_iter = 0; i_iter < num_tsp; i_iter++) {
+    printf("iter=%d ", i_iter);
+    g_timer.tuck("time");
+    update_count = 0;
+    int update_count_nndes = 0;
+
+    for (int i_data = 0; i_data < oracle.size; i_data++) {
+      ind_arr[i_data] = i_data;
+    }
+
+    ll = initLinkedList();
+    int *tmp = (int *)malloc(sizeof(int));
+    *tmp = -1;
+    linkedListNode *firstnode = ll_add_node(ll, tmp);
+    rpdiv(ind_arr, ind_arr2);
+
+#ifdef DISABLED00
+    int *map = (int *)malloc(sizeof(int) * data->size);
+    for (int i_data = 0; i_data < data->size; i_data++) {
+      map[i_data] = ind_arr[i_data];
+    }
+    ll_add_node(ll, (void *)map);
+#endif
+
+    float total_dist = 0;
+    for (int i_data = 0; i_data < oracle.size - 1; i_data++) {
+      int a, b;
+      a = ind_arr[i_data];
+      b = ind_arr[i_data + 1];
+      // float d_tmp = distance(data, a, b);
+      float d_tmp = oracle(a, b);
+      // printf("a=%d b=%d d=%f\n",a,b,d_tmp);
+      float _dist = scale_dist(d_tmp);
+      total_dist = _dist;
+      nng_add_mutual_neighbor2(g, a, b, _dist);
+    }
+    total_dist_sum += total_dist;
+    printf("I=%d total_dist=%f\n", i_iter, total_dist);
+  }
+  printf("\nmean_tsp_length=%f\n", total_dist_sum / (i_iter + 1));
+  // graph_stat(g);
+
+  gNode *node;
+
+  free(ind_arr);
+  free(ind_arr2);
+
+  /*ll_free_list(ll);*/
+  // (*ll_ret) = ll; //TODO:
+  return g;
 }
 
-// refine/prune:
-// Experimental, remove link a-b if there exists c so that
-// d(a,b) > d(a,c) and d(c,b) > d(a,c)
-
-void refine_graph(DataSet *data, nnGraph *g) {
-  gNode *nodeA;
-  gNode *nodeB;
-  gNode *nodeC;
-  float dab, dac, dbc;
-
-  g_timer.tuck("start graph refine");
-  int total_count = 0;
-  int common_n_count = 0;
-
-  vector<pair<int, int>> to_del;
-
-  for (int i = 0; i < g->size; i++) {
-    nodeA = &g->nodes[i];
-    int a = i;
-
-    // For all nodes a, loop all neighbor nodes b
-
-    for (auto gi : *(nodeA->nset)) {
-      // for (int j = 0; j < node->neighbors->size; j++) {
-      // gItem *gi = (gItem *)ll_get_item(node->neighbors, j);
-      nodeB = &g->nodes[gi->id];
-      int b = gi->id;
-      dab = gi->dist;
-
-      // For all nodes b, loop all neighbor nodes c
-      // (neighbors of neighbors of a)
-      // for (int k = j + 1; k < node->neighbors->size; k++) {
-
-      for (auto gi2 : *(nodeA->nset)) {
-        int c = gi2->id;
-        if (b == c) {
-          continue;
-        }
-        dac = gi2->dist;
-        total_count++;
-        // printf("a=%d b=%d c=%d dab=%f dac=%f dbc=%f\n", a, b, c, dab, dac, dbc);
-        auto it = nodeB->nset->find(gi2);
-        if (it != nodeB->nset->end()) {
-          dbc = (*it)->dist;
-          // if (nng_has_neighbor(g, b, c)) {
-          // b and c already neighbors
-
-          // Find largest link disrecarding equal cases
-          if (dab > dac) {
-            if (dab > dbc) {
-              // dab largest
-              to_del.emplace_back(a, b);
-            } else if (dab < dbc) {
-              to_del.emplace_back(b, c);
-              // dbc largest
-            }
-          } else {
-            if (dac > dbc) {
-              // dac largest
-              to_del.emplace_back(a, c);
-            } else if (dac < dbc) {
-              to_del.emplace_back(b, c);
-              // dbc largest
-            }
-          }
-
-          // printf("b and c already neighbors\n");
-          common_n_count++;
-          continue;
-        }
-
-        // dcb = distance(data, c, b);
-        // dac = gi2->dist;
-
-        // if ((dab > dcb || dac > dcb)) {
-        // }
-      }
-    }
-    for (vector<pair<int, int>>::const_iterator it = to_del.begin(); it != to_del.end(); it++) {
-      // printf("delete %d %d\n", it->first, it->second);
-      // nng_remove_neighbor(g, it->first, it->second);
-      // nng_remove_neighbor(g, it->second, it->first);
-    }
-    to_del.clear();
-  }
-
-  g_timer.tuck("end graph refine");
-  // printf("total_count:%d common_n_count:%d to_delete:%d\n", total_count, common_n_count,
-  // to_del.size());
-}
-
-void prune_neighbors2(nnGraph *g, int pid) {
-  gNode *nodeA;
-  gNode *nodeB;
-  gNode *nodeC;
-  float dab, dac, dbc;
-
-  // g_timer.tuck("start graph refine");
-  int total_count = 0;
-  int common_n_count = 0;
-  int num_pruned = 0;
-
-  vector<pair<int, int>> to_del;
-
-  nodeA = &g->nodes[pid];
-
-  // For all nodes a, loop all neighbor nodes b
-
-  for (auto gi : *(nodeA->nset)) {
-    g->nodes[gi->id].visited = g->cur_iter;
-    g->nodes[gi->id].visited_dist = gi->dist;
-  }
-  int a = pid;
-  for (auto gi : *(nodeA->nset)) {
-    // for (int j = 0; j < node->neighbors->size; j++) {
-    // gItem *gi = (gItem *)ll_get_item(node->neighbors, j);
-    nodeB = &g->nodes[gi->id];
-    int b = gi->id;
-    dab = gi->dist;
-
-    // For all nodes b, loop all neighbor nodes c
-    // (neighbors of neighbors of a)
-    // for (int k = j + 1; k < node->neighbors->size; k++) {
-
-    for (auto gi2 : *(nodeB->nset)) {
-      int c = gi2->id;
-      if (b == c) {
-        continue;
-      }
-      // c, neighbor of b is also neighbor of a
-      if (g->nodes[c].visited == g->cur_iter) {
-        dbc = gi2->dist;
-        dac = g->nodes[c].visited_dist;
-
-        int rem1, rem2;
-        // Find the longest distance in the triangle
-        if (dac > dbc) {
-          if (dac > dab) {
-            rem1 = a;
-            rem2 = c;
-            g->nodes[c].visited = -1;
-          } else if (dac < dab) {
-            rem1 = a;
-            rem2 = b;
-            g->nodes[b].visited = -1;
-          }
-        } else if (dac < dbc) {
-          if (dbc > dab) {
-            rem1 = b;
-            rem2 = c;
-          } else if (dbc < dab) {
-            rem1 = a;
-            rem2 = b;
-            g->nodes[b].visited = -1;
-          }
-        }
-
-        // if (dab > dbc && dab < dac) {
-        // if (dac > dbc && dab < dac) {
-
-        if (g->nodes[rem1].nearest->id != rem2 && g->nodes[rem2].nearest->id != rem1) {
-          to_del.emplace_back(rem1, rem2);
-          num_pruned++;
-          g_stat.num_pruned++;
-          break;
-        }
-      }
-    }
-  }
-
-  for (vector<pair<int, int>>::const_iterator it = to_del.begin(); it != to_del.end(); it++) {
-    // printf("delete %d %d\n", it->first, it->second);
-    nng_remove_neighbor(g, it->first, it->second);
-    nng_remove_neighbor(g, it->second, it->first);
-  }
-  to_del.clear();
-  if (g_options.verbose > 1) {
-    printf("num_pruned:%d\n", num_pruned);
-  }
-  // to_del.size());
-
-  // g_timer.tuck("end graph refine");
-  // printf("total_count:%d common_n_count:%d to_delete:%d\n", total_count, common_n_count,
-  // to_del.size());
-}
-
-void prune_neighbors(nnGraph *g, int pid) {
-  gNode *nodeA;
-  gNode *nodeB;
-  gNode *nodeC;
-  float dab, dac, dbc;
-
-  // g_timer.tuck("start graph refine");
-  int total_count = 0;
-  int common_n_count = 0;
-  int num_pruned = 0;
-
-  vector<pair<int, int>> to_del;
-
-  nodeA = &g->nodes[pid];
-
-  // For all nodes a, loop all neighbor nodes b
-
-  int a = pid;
-  for (auto gi : *(nodeA->nset)) {
-    // for (int j = 0; j < node->neighbors->size; j++) {
-    // gItem *gi = (gItem *)ll_get_item(node->neighbors, j);
-    nodeB = &g->nodes[gi->id];
-    int b = gi->id;
-    dab = gi->dist;
-
-    if (gi->id == nodeA->nearest_id) {
-      continue;
-    }
-
-    // For all nodes b, loop all neighbor nodes c
-    // (neighbors of neighbors of a)
-    // for (int k = j + 1; k < node->neighbors->size; k++) {
-
-    for (auto gi2 : *(nodeA->nset)) {
-      int c = gi2->id;
-      if (b == c) {
-        continue;
-      }
-      dac = gi2->dist;
-      total_count++;
-      // printf("a=%d b=%d c=%d dab=%f dac=%f dbc=%f\n", a, b, c, dab, dac, dbc);
-      // Check if our neighbor is closer to another neighbor
-      auto it = nodeB->nset->find(gi2);
-      if (it != nodeB->nset->end()) {
-        dbc = (*it)->dist;
-
-        int rem1, rem2;
-        if (dac > dbc) {
-          if (dac > dab) {
-            rem1 = a;
-            rem2 = c;
-          } else if (dac < dab) {
-            rem1 = a;
-            rem2 = b;
-          }
-        } else if (dac < dbc) {
-          if (dbc > dab) {
-            rem1 = b;
-            rem2 = c;
-          } else if (dbc < dab) {
-            rem1 = a;
-            rem2 = b;
-          }
-        }
-
-        // if (dab > dbc && dab < dac) {
-        // if (dac > dbc && dab < dac) {
-
-        if (g->nodes[rem1].nearest->id != rem2 && g->nodes[rem2].nearest->id != rem1) {
-          to_del.emplace_back(rem1, rem2);
-          num_pruned++;
-          g_stat.num_pruned++;
-          break;
-        }
-        // }
-
-        // common_n_count++;
-        continue;
-      }
-    }
-  }
-
-  for (vector<pair<int, int>>::const_iterator it = to_del.begin(); it != to_del.end(); it++) {
-    // printf("delete %d %d\n", it->first, it->second);
-    nng_remove_neighbor(g, it->first, it->second);
-    nng_remove_neighbor(g, it->second, it->first);
-  }
-  to_del.clear();
-  if (g_options.verbose > 1) {
-    printf("num_pruned:%d\n", num_pruned);
-  }
-}
-
-void rpdiv_recurse_queue(linkedList *qu, queueItem *qi) {
+template <typename ORACLE> void TSPclu<ORACLE>::rpdivRecurseQueue(linkedList *qu, queueItem *qi) {
   int *left_arr;
   int *right_arr;
   int *left_arr2;
@@ -332,7 +209,7 @@ void rpdiv_recurse_queue(linkedList *qu, queueItem *qi) {
   int left_size = 0;
   int right_size = 0;
 
-  DataSet *data = qi->data;
+  // DataSet *data = qi->data;
   linkedList *ll = qi->ll;
   linkedListNode *llnode = qi->llnode;
   int *input_arr = qi->input_arr;
@@ -351,8 +228,8 @@ void rpdiv_recurse_queue(linkedList *qu, queueItem *qi) {
   // Put B closer to uncle if left child
   // A closer to uncle if right child
   if (uncle_id != -1 && g_options.uncle_adjustment == 1) {
-    float A_to_uncle = distance(data, uncle_id, randind_A);
-    float B_to_uncle = distance(data, uncle_id, randind_B);
+    float A_to_uncle = oracle(uncle_id, randind_A);
+    float B_to_uncle = oracle(uncle_id, randind_B);
     int tmpi;
     if (is_left_child == 1 && A_to_uncle < B_to_uncle) {
       tmpi = randind_B;
@@ -372,8 +249,8 @@ void rpdiv_recurse_queue(linkedList *qu, queueItem *qi) {
     int tmpi;
     if (is_left_child == 1) {
       uncle_id = *((int *)llnode->next->content);
-      float A_to_uncle = distance(data, uncle_id, randind_A);
-      float B_to_uncle = distance(data, uncle_id, randind_B);
+      float A_to_uncle = oracle(uncle_id, randind_A);
+      float B_to_uncle = oracle(uncle_id, randind_B);
       if (A_to_uncle < B_to_uncle) {
         tmpi = randind_B;
         randind_B = randind_A;
@@ -383,8 +260,8 @@ void rpdiv_recurse_queue(linkedList *qu, queueItem *qi) {
     }
     if (is_left_child == 0) {
       uncle_id = *((int *)llnode->prev->content);
-      float A_to_uncle = distance(data, uncle_id, randind_A);
-      float B_to_uncle = distance(data, uncle_id, randind_B);
+      float A_to_uncle = oracle(uncle_id, randind_A);
+      float B_to_uncle = oracle(uncle_id, randind_B);
       if (A_to_uncle > B_to_uncle) {
         tmpi = randind_B;
         randind_B = randind_A;
@@ -400,10 +277,10 @@ void rpdiv_recurse_queue(linkedList *qu, queueItem *qi) {
 
       int previd = *((int *)llnode->prev->content); // previous in the chain
       int nextid = *((int *)llnode->next->content); // next in the chain
-      float A_to_prev = distance(data, previd, randind_A);
-      float A_to_next = distance(data, nextid, randind_A);
-      float B_to_prev = distance(data, previd, randind_B);
-      float B_to_next = distance(data, nextid, randind_B);
+      float A_to_prev = oracle(previd, randind_A);
+      float A_to_next = oracle(nextid, randind_A);
+      float B_to_prev = oracle(previd, randind_B);
+      float B_to_next = oracle(nextid, randind_B);
 
       if (A_to_prev + B_to_next > A_to_next + B_to_prev) {
         tmpi = randind_B;
@@ -417,8 +294,8 @@ void rpdiv_recurse_queue(linkedList *qu, queueItem *qi) {
   int class_B_count = 0;
 
   for (int i = 0; i < input_arr_size; i++) {
-    float dist_A = distance(data, input_arr[i], randind_A);
-    float dist_B = distance(data, input_arr[i], randind_B);
+    float dist_A = oracle(input_arr[i], randind_A);
+    float dist_B = oracle(input_arr[i], randind_B);
 
     if (dist_A < dist_B) {
       // put to left side
@@ -444,15 +321,6 @@ void rpdiv_recurse_queue(linkedList *qu, queueItem *qi) {
   left_arr2 = input_arr;
   right_arr2 = input_arr + class_A_count;
 
-  // if (left_size == 0 || right_size==0) {
-  // printf("left_size=%d right_size=%d\n", left_size, right_size);
-  // for (int i = 0; i < input_arr_size; i++) {
-  // float dist_A = distance(data, input_arr[i], randind_A);
-  // float dist_B = distance(data, input_arr[i], randind_B);
-  // printf("input_arr[i]=%d dA=%f dB=%f", input_arr[i], dist_A, dist_B);
-  // }
-  // }
-
   *((int *)llnode->content) = randind_A;
   int *tmpcontent = (int *)malloc(sizeof(int));
   *tmpcontent = randind_B;
@@ -461,7 +329,7 @@ void rpdiv_recurse_queue(linkedList *qu, queueItem *qi) {
   if (left_size > 0) {
     if (left_size >= 2) {
       queueItem *qileft = (queueItem *)malloc(sizeof(queueItem));
-      qileft->data = data;
+      // qileft->data = data;
       qileft->ll = ll;
       qileft->llnode = llnode;
       qileft->input_arr = left_arr2;
@@ -473,7 +341,7 @@ void rpdiv_recurse_queue(linkedList *qu, queueItem *qi) {
     }
     if (right_size >= 2) {
       queueItem *qiright = (queueItem *)malloc(sizeof(queueItem));
-      qiright->data = data;
+      // qiright->data = data;
       qiright->ll = ll;
       qiright->llnode = llnode->next;
       qiright->input_arr = right_arr2;
@@ -486,46 +354,8 @@ void rpdiv_recurse_queue(linkedList *qu, queueItem *qi) {
   }
 }
 
-// Random point division for TSP solution
-// recursion implemented using a queue
-void rpdiv_queue(DataSet *data, int *ind_arr, int *ind_arr2) {
-  linkedList *qu; // queue
-  qu = initLinkedList();
+#ifdef DISABLED
 
-  linkedList *ll = initLinkedList();
-  int *tmp = (int *)malloc(sizeof(int));
-  *tmp = -1;
-  linkedListNode *firstnode = ll_add_node(ll, tmp);
-
-  queueItem *qi;
-  queueItem *qiroot = (queueItem *)malloc(sizeof(queueItem));
-  qiroot->data = data;
-  qiroot->ll = ll;
-  qiroot->llnode = NULL;
-  qiroot->input_arr = ind_arr;
-  qiroot->input_arr2 = ind_arr2;
-  qiroot->input_arr_size = data->size;
-  qiroot->is_left_child = 1;
-  qiroot->uncle_id = -1;
-  linkedListNode *top;
-
-  qiroot->llnode = ll->root;
-
-  ll_add_node(qu, qiroot);
-  int i = 1;
-  while (qu->size > 0) {
-    // printf("i=%d qu->size=%d\n",i,qu->size);
-    top = ll_pop_first_node(qu);
-    qi = (queueItem *)top->content;
-    rpdiv_recurse_queue(qu, qi);
-    free(top);
-    free(qi);
-    i++;
-  }
-  ll_free_list(ll);
-}
-
-// int __attribute__((noinline)) grand() { return rand(); }
 int grand() { return rand(); }
 float calc_clu_dist(nnGraph *g, int p1, int p2) {
 
@@ -632,20 +462,6 @@ int nng_check_nearest(nnGraph *g, int p1) {
   return changed;
 }
 
-void printNodeData(nnGraph *g, int id) {
-
-  printf("==== Node info id=%d ==== \n", id);
-  printf("Nearest: %d (%f)\n", g->nodes[id].nearest_id, g->nodes[id].nearest_dist);
-  int i = 0;
-  for (gItem *gi : *(g->nodes[id].nset)) {
-    i++;
-    printf("%d: %d (%f)\n", i, gi->id, gi->dist);
-  }
-  printf("=========================\n");
-  return;
-}
-
-// Perform clustering using the TSP-graph or any connected graph
 int *cluster_tspg(DataSet *data, nnGraph *g, int k, vector<vector<float>> *centroids) {
   printf("Clustering using tspg graph\n");
   g->data = data;
@@ -748,21 +564,6 @@ int *cluster_tspg(DataSet *data, nnGraph *g, int k, vector<vector<float>> *centr
   return partition;
 }
 
-nnGraph *create_complete_graph(DataSet *data, nnGraph *g) {
-  g_timer.tuck("Creating complete graph");
-  float total_dist = 0;
-  for (int a = 0; a < data->size - 1; a++) {
-    for (int b = a + 1; b < data->size; b++) {
-      float _dist = scale_dist(distance(data, a, b));
-      total_dist = _dist;
-      nng_add_mutual_neighbor2(g, a, b, _dist);
-    }
-  }
-
-  g_timer.tuck("Graph created");
-  return g;
-}
-
 nnGraph *create_tspg(DataSet *data, nnGraph *g, int num_tsp, linkedList **ll_ret) {
   kNNGraph *knng = NULL;
   int update_count = 0;
@@ -850,9 +651,6 @@ nnGraph *create_tspg(DataSet *data, nnGraph *g, int num_tsp, linkedList **ll_ret
   (*ll_ret) = ll;
   return g;
 }
-
-#define MIN(a, b) (((a) < (b)) ? (a) : (b))
-#define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
 float scale_dist(float dtmp) {
 
@@ -1059,3 +857,5 @@ void nng_merge_nodes(nnGraph *g, nodeHeap *H, int p1, int p2) {
     // }
   }
 }
+
+#endif

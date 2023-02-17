@@ -52,6 +52,104 @@ struct DataSet {
 #endif
 };
 
+template <typename M> class OracleL2 {
+  const M &m;
+
+public:
+  OracleL2(const M &m_) : m(m_) {}
+  float operator()(int i, int j) const __attribute__((noinline));
+};
+
+template <typename M> float OracleL2<M>::operator()(int i, int j) const {
+  const typename M::value_type *first1 = m[i];
+  const typename M::value_type *first2 = m[j];
+  float r = 0.0;
+  for (int i = 0; i < m.getDim(); ++i) {
+    float v = first1[i] - first2[i];
+    r += v * v;
+  }
+  return sqrt(r);
+}
+
+class OracleA {
+  // const M &m;
+public:
+  const int N;
+  OracleA(const int N_) : N(N_) {}
+  // float operator()(int i, int j) const __attribute__((noinline));
+  float operator()(int i, int j) const;
+};
+
+float OracleA::operator()(int i, int j) const {
+  return i * j;
+  // const typename M::value_type *first1 = m[i];
+  // const typename M::value_type *first2 = m[j];
+  // float r = 0.0;
+  // for (int i = 0; i < m.getDim(); ++i) {
+  // float v = first1[i] - first2[i];
+  // r += v * v;
+  // }
+  // return sqrt(r);
+}
+
+struct nnGraph;
+class L2df {
+  // const M &m;
+public:
+  int size;
+  nnGraph *graph;
+  DataSet *data;
+  // GraphDistance(nnGraph *graph_) : graph(graph_) { N = graph->size; }
+  // GraphDistance(DataSet *data_);
+  L2df(DataSet *data_) : data(data_){size=data->size;};
+  // float operator()(int i, int j) const __attribute__((noinline));
+  float operator()(int i, int j) const;
+};
+
+float L2df::operator()(int i, int j) const {
+
+  // float L2dist(float *p1_idx, float *p2_idx, int D) {
+
+  float *p1_idx = data->data[i];
+  float *p2_idx = data->data[j];
+  // (float *)*(DS->data + idx)
+  float tmp = 0;
+  float dist = 0;
+  for (int i = 0; i < data->dimensionality; i++) {
+    tmp = *p1_idx - *p2_idx;
+    dist += tmp * tmp;
+    p1_idx++;
+    p2_idx++;
+  }
+  return sqrt(dist);
+}
+
+struct nnGraph;
+class GraphDistance {
+  // const M &m;
+public:
+  int size;
+  nnGraph *graph;
+  DataSet *data;
+  // GraphDistance(nnGraph *graph_) : graph(graph_) { N = graph->size; }
+  GraphDistance(nnGraph *graph_, DataSet *data_);
+  // float operator()(int i, int j) const __attribute__((noinline));
+  float operator()(int i, int j) const;
+};
+
+float GraphDistance::operator()(int i, int j) const {
+  return i * j - 3.2;
+  // const typename M::value_type *first1 = m[i];
+  // const typename M::value_type *first2 = m[j];
+  // float r = 0.0;
+  // for (int i = 0; i < m.getDim(); ++i) {
+  // float v = first1[i] - first2[i];
+  // r += v * v;
+  // }
+  // return sqrt(r);
+}
+
+// NNDescent<OracleL2<FloatDataset> > nndes(data,N, K, S, oracle, GRAPH_BOTH);
 
 float dice_set_distance(DataSet *sd, int a, int b);
 std::istream &safeGetline(std::istream &is, std::string &t);

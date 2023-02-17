@@ -1,6 +1,10 @@
 
 #include "dataset.hpp"
 
+
+// GraphDistance::GraphDistance(nnGraph *graph_) : graph(graph_) { N = graph->size; }
+GraphDistance::GraphDistance(nnGraph *graph_, DataSet* data_) : graph(graph_), data(data_) { size = data->size; }
+
 float dice_set_distance(DataSet *sd, int a, int b) {
   float d =
       (float)(1.0 - dice_ngram(sd->bigrams[a], sd->bigrams[b], sd->setSize[a], sd->setSize[b]));
@@ -267,7 +271,7 @@ float cosine_dist(float *p1_idx, float *p2_idx, int D) {
 float distance(DataSet *P, int p1, int p2) {
   float ret;
 
-  if (P->type == T_NUMERICAL)  {
+  if (P->type == T_NUMERICAL) {
     // Numerical data
 
     float *p1_idx = get_vector(P, p1);
@@ -312,7 +316,7 @@ float distance(DataSet *P, int p1, int p2) {
     // pyp2 = PyLong_FromLong(p2);
     // result = PyObject_CallFunctionObjArgs(P->pydf, pyp1, pyp2, NULL);
     result = PyObject_CallFunctionObjArgs(P->pydf, P->pyids[p1], P->pyids[p2], NULL);
-    
+
     ret = PyFloat_AS_DOUBLE(result);
     // Py_DECREF(pyp1);
     // Py_DECREF(pyp2);

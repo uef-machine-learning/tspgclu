@@ -24,6 +24,10 @@
 #include <iostream>
 #include <vector>
 
+// inline float dist33(int i, int j) {
+float __attribute__((noinline)) dist33(int i, int j) { return i * j - 3.2; }
+// float dist33(int i, int j) { return i * j - 3.2; }
+
 // #define EXPERIMENTAL 1
 
 using namespace std;
@@ -48,8 +52,8 @@ void print_stat() {
 #include "timer.hpp"
 #include "util.hpp"
 #include "globals.h"
-#include "dataset.hpp"
 #include "linked_list.hpp"
+#include "dataset.hpp"
 #include "nngraph.hpp"
 #include "knngraph.hpp"
 #include "agg_clu.hpp"
@@ -61,9 +65,12 @@ void print_stat() {
 #include "linked_list.cpp"
 #include "options.cpp"
 #include "agg_clu.cpp"
+#include "tspg_clu.cpp"
 
 kNNGraph *g_ground_truth;
 #include "recall.h"
+
+float distf(int i, int j) { return i * j - 20.0; }
 
 int write_output_pa(int *part, DataSet *data, arg_file *outfn, int numClusters,
                     int output_write_header) {
@@ -103,6 +110,7 @@ int main(int argc, char *argv[]) {
   struct arg_end *end;
   struct arg_file *gtfn;
   struct arg_file *infn;
+  struct arg_file *a_graphfn;
   struct arg_file *a_centroidfn;
   struct arg_file *a_mergeorderfn;
   struct arg_file *mapfn;
@@ -203,6 +211,8 @@ int main(int argc, char *argv[]) {
           arg_filen(NULL, "mergefn", "<file>", 0, 1, "output merge order filename (TODO)"),
       infn = arg_filen(NULL, NULL, "<file>", 1, 1, "input files"),
 
+      a_graphfn = arg_filen(NULL, "graphfn", "<file>", 0, 1, "graph used for distance calculation"),
+
 #ifdef EXPERIMENTAL
       mapfn = arg_filen(NULL, "mapfn", "<file>", 0, 1, "file for one-dimensional mappings"),
       informat =
@@ -246,6 +256,54 @@ int main(int argc, char *argv[]) {
   int W;
   int maxIter = 100;
   int numClusters = 15;
+
+  nnGraph *graph = NULL;
+  if (a_graphfn->count >= 1) {
+    int seed = time(NULL);
+    srand(seed);
+    printf("RNG seed: %d\n", seed);
+
+    graph = read_ascii_graphf2(a_graphfn->filename[0], 1);
+    // data = loadSetData(infn->filename[0]);
+    // data = loadSetData(infn->filename[0]);
+    data = read_ascii_dataset(infn->filename[0]);
+    int N = 10;
+    // OracleA oracle(20);
+
+    if (1) {
+      L2df l2(data);
+
+      // data = loadSetData(infn->filename[0]);
+
+      float d;
+      for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+          d = l2(i, j);
+          printf("d=%f\n", d);
+        }
+      }
+
+      TSPclu<L2df> tspgclu(10, 3, l2);
+      tspgclu.runClustering();
+
+    } else {
+      // float (*fun_ptr)(int, int);
+      // if (d > 0) {
+      // fun_ptr = &distf;
+      // }
+      // GraphDistance graphd(graph);
+      GraphDistance graphd(graph, data);
+      // TSPclu<OracleA> tspgclu(10,3, oracle);
+      TSPclu<GraphDistance> tspgclu(10, 3, graphd);
+      tspgclu.runClustering();
+    }
+    // tspgclu.runDistTest();
+    // tspgclu.runDistTest2();
+    // tspgclu.runDistTestFref(&distf);
+    // tspgclu.runDistTestFref(fun_ptr);
+
+    return 0;
+  }
 
   if (a_scale_method->count > 0) {
     g_options.scale_method = a_scale_method->ival[0];
@@ -483,26 +541,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (outfn->count > 0) {
-
       write_output_pa(part, data, outfn, numClusters, output_write_header);
-
-      // FILE *fp = fopen(outfn->filename[0], "w");
-      // if (fp == NULL) {
-      // perror("Can't write to file");
-      // return 1;
-      // }
-
-      // if (output_write_header) {
-      // fprintf(fp, "VQ PARTITIONING 2.0\n");
-      // fprintf(fp, "%d\n%d\n", numClusters, data->size);
-      // fprintf(fp, "-------------------------------------\n");
-      // }
-
-      // printf("Writing output to file: %s\n", outfn->filename[0]);
-      // write_ints_to_fp(fp, part, data->size);
-      // fclose(fp);
-      // }
-      // print_stat();
     }
   }
   return 0;

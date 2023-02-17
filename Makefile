@@ -12,7 +12,7 @@ LIBS = -lpthread
 
 CFLAGS = -O3
 
-DEPS = *.cpp *.h
+DEPS = *.cpp *.h *hpp
 OBJS=argtable3.o
 .PHONY:	all clean
 

@@ -1,7 +1,7 @@
 
 // int HeapCmp1(void *a, void *b, void *info) {
-  // float diff = (((gNode *)a)->nearest_dist - ((gNode *)b)->nearest_dist);
-  // return (diff > 0 ? 1 : diff == 0 ? 0 : -1);
+// float diff = (((gNode *)a)->nearest_dist - ((gNode *)b)->nearest_dist);
+// return (diff > 0 ? 1 : diff == 0 ? 0 : -1);
 // }
 // #define HeapCmp(a, b, c) HeapCmp1(a, b, c)
 
@@ -28,7 +28,7 @@ nnGraph *init_nnGraph(int numNodes) {
     g->nodes[i].weight = 1;
     g->nodes[i].outdated = 0;
     g->nodes[i].internalSum = 0.0;
-    
+
     g->nodes[i].id = i;
     g->nodes[i].visited = -1;
     g->nodes[i].maxNeighbors = maxNeighbors;
@@ -54,20 +54,19 @@ gItem *nng_add_mutual_neighbor2(nnGraph *g, int p1, int p2, float dist) {
 
   gItem *gi_p1 = (gItem *)malloc(sizeof(gItem));
   gItem *gi_p2 = (gItem *)malloc(sizeof(gItem));
-  
+
   gi_p1->cost = -1;
   gi_p1->visited = -1;
   gi_p1->heapp = -1;
-  
+
   gi_p2->cost = -1;
   gi_p2->visited = -1;
   gi_p2->heapp = -1;
 
-  
   float cost;
   int visited;
   gItem *pair;
-  int heapp; // Pointer to heap position 
+  int heapp; // Pointer to heap position
 
   gi_p1->visited = 0;
   gi_p2->visited = 0;
@@ -77,7 +76,7 @@ gItem *nng_add_mutual_neighbor2(nnGraph *g, int p1, int p2, float dist) {
 
   gi_p2->id = p1;
   gi_p2->dist = dist;
-  
+
   gi_p2->pair = gi_p1;
   gi_p1->pair = gi_p2;
 
@@ -136,20 +135,33 @@ void nng_remove_neighbor(nnGraph *g, int p1, int p2) {
     g->nodes[p1].nset->erase(it);
     free(*it);
   }
-  
+
   // free(gi); //TODO
 
   // g->nodes[p1].nset->insert(gi);
   /*node->size--;*/
 }
 
+// int nng_has_neighbor(nnGraph *g, int p1, int p2) {
+// gItem *gi = NULL;
+// gItem *neighbor = ll_get_node_if_exist(g->nodes[p1].neighbors, p2);
+// if (neighbor == NULL) {
+// return 0;
+// }
+// return 1;
+// }
+
 int nng_has_neighbor(nnGraph *g, int p1, int p2) {
-  gItem *gi = NULL;
-  gItem *neighbor = ll_get_node_if_exist(g->nodes[p1].neighbors, p2);
-  if (neighbor == NULL) {
-    return 0;
+
+  gItem *gi = (gItem *)malloc(sizeof(gItem));
+  gi->id = p2;
+  auto it = g->nodes[p1].nset->find(gi);
+  int ret = 0;
+  if (it != g->nodes[p1].nset->end()) {
+    ret = 1;
   }
-  return 1;
+  free(gi); 
+  return ret;
 }
 
 // https://thispointer.com/how-to-access-element-by-index-in-a-set-c/
@@ -336,4 +348,115 @@ void test_nn_graph() {
   printf("\n");
 }
 
+nnGraph *read_ascii_graphf2(const char *fname, int clist) {
 
+  std::string line;
+  std::string delim = " ";
+  std::ifstream infile(fname);
+  DataSet *sd = (DataSet *)malloc(sizeof(DataSet));
+  sd->strings = new vector<string>;
+  sd->type = T_SET; // String data
+  int numLines = 0;
+  int numItems = 0;
+  int buf[1000000];
+
+  // std::map<std::string, int> m;
+  std::map<std::string, int> code_to_id;
+  std::map<int, std::string> id_to_code;
+  std::stringstream ss(line);
+  std::string item;
+  int id = -1;
+  sd->size = 0;
+  while (std::getline(infile, line)) {
+    sd->size++;
+  }
+  infile.clear();
+  infile.seekg(0, ios::beg);
+  printf("Num lines: %d\n", sd->size);
+  int N = sd->size - 1;
+
+  sd->bigrams = (int **)malloc(sizeof(int *) * sd->size);
+  sd->setSize = (int *)malloc(sizeof(int) * sd->size);
+
+  // while (std::getline(infile, line)) {
+  int show_sets = 1;
+
+  nnGraph *graph = init_nnGraph(N);
+
+   // Read first line which contains the names/codes of the set items
+   // Convert to int id's
+  safeGetline(infile, line);
+  {
+    std::stringstream ss(line);
+    std::string item;
+    int id = -1;
+    int setSize = 0;
+    while (std::getline(ss, item, ' ')) {
+      if (item.size() < 1) {
+        continue;
+      }
+      if (code_to_id.find(item) == code_to_id.end()) {
+        code_to_id[item] = numItems;
+        id_to_code[numItems] = item;
+        numItems++;
+      } else {
+      }
+      id = code_to_id[item];
+      // if (show_sets) {
+        // cout << "  word: '" << item << "' mapping:" << id << endl;
+      // }
+      buf[setSize] = id;
+      setSize++;
+    }
+  }
+
+  while (safeGetline(infile, line)) {
+    vector<int> links;
+    vector<int> weights;
+
+    if (line.size() <= 1) {
+      continue;
+    }
+
+    std::stringstream ss(line);
+    std::string item;
+    std::getline(ss, item, ' ');
+    // if (item.size() < 1) {
+    // continue;
+    // }
+
+    int id = stoi(item);
+
+    std::getline(ss, item, ' ');
+
+    int numlinks = stoi(item);
+    // printf("id=%d numlinks=%d ", id, numlinks);
+    for (int i = 0; i < numlinks; i++) {
+      std::getline(ss, item, ' ');
+      int neighborid = stoi(item);
+      // printf("%d ", neighborid);
+      // links[i] = neighborid;
+      links.push_back(neighborid);
+    }
+    for (int i = 0; i < numlinks; i++) {
+      std::getline(ss, item, ' ');
+      float weight = stof(item);
+      // weights[i] = weight;
+      weights.push_back(weight);
+      // printf("%f ", weight);
+    }
+    // printf("numw=%d\n",weights.size());
+
+    for (int i = 0; i < numlinks; i++) {
+      // printf("add link: [%d] = (%f)> [%d]\n", id, weights[i], links[i]);
+      if (!nng_has_neighbor(graph, id, links[i])) {
+        nng_add_neighbor(graph, id, links[i], weights[i]);
+      }
+
+      if (!nng_has_neighbor(graph, links[i], id)) {
+        nng_add_neighbor(graph, links[i], id, weights[i]);
+      }
+    }
+  }
+  return graph;
+}
