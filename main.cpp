@@ -72,7 +72,7 @@ kNNGraph *g_ground_truth;
 
 float distf(int i, int j) { return i * j - 20.0; }
 
-int write_output_pa(int *part, DataSet *data, arg_file *outfn, int numClusters,
+int write_output_pa(int *part, int size, arg_file *outfn, int numClusters,
                     int output_write_header) {
   if (outfn->count > 0) {
 
@@ -84,12 +84,12 @@ int write_output_pa(int *part, DataSet *data, arg_file *outfn, int numClusters,
 
     if (output_write_header) {
       fprintf(fp, "VQ PARTITIONING 2.0\n");
-      fprintf(fp, "%d\n%d\n", numClusters, data->size);
+      fprintf(fp, "%d\n%d\n", numClusters, size);
       fprintf(fp, "-------------------------------------\n");
     }
 
     printf("Writing output to file: %s\n", outfn->filename[0]);
-    write_ints_to_fp(fp, part, data->size);
+    write_ints_to_fp(fp, part, size);
     // write_ints_to_file(outfn->filename[0], part, data->size);
     fclose(fp);
   }
@@ -283,8 +283,12 @@ int main(int argc, char *argv[]) {
         }
       }
 
-      TSPclu<L2df> tspgclu(10, 3, l2);
-      tspgclu.runClustering();
+      TSPclu<L2df> tspgclu(numClusters, 5, l2);
+      int *part = tspgclu.runClustering();
+
+      if (outfn->count > 0) {
+        write_output_pa(part, data->size, outfn, numClusters, 1);
+      }
 
     } else {
       // float (*fun_ptr)(int, int);
@@ -541,7 +545,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (outfn->count > 0) {
-      write_output_pa(part, data, outfn, numClusters, output_write_header);
+      write_output_pa(part, data->size, outfn, numClusters, output_write_header);
     }
   }
   return 0;

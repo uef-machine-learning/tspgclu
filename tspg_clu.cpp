@@ -1,10 +1,11 @@
 
 template <typename ORACLE> class TSPclu {
 private:
-  const ORACLE &oracle;
-  int size;
+  int numclu;
   int num_tsp;
-  int K;
+  const ORACLE &oracle;
+
+  int size;
 
   // int update(int p1, int p2) {
 
@@ -17,30 +18,50 @@ public:
 
   // long long int getCost() const { return cost; }
 
-  TSPclu(int K_, int num_tsp_, const ORACLE &oracle_) : oracle(oracle_), K(K_), num_tsp(num_tsp_) {
+  TSPclu(int K_, int num_tsp_, const ORACLE &oracle_)
+      : numclu(K_), num_tsp(num_tsp_), oracle(oracle_) {
     size = oracle.size;
 
     // printf("N=%d, %d K=%d\n", N, oracle.N, K);
-    printf("N=%d K=%d num_tsp=%d\n", size, K, num_tsp);
+    printf("N=%d K=%d num_tsp=%d\n", size, numclu, num_tsp);
   }
 
-  void runClustering() {
+  int* runClustering() {
     float a;
     Timer t;
     t.tick();
     // for (int i = 0; i < 1e9; i++) {
     // a += oracle(i, i / 2);
     // }
-    nnGraph * g;
+    nnGraph *g;
     g = createTSPg(NULL);
+    int *part;
+
+    vector<vector<float>> *centroids;
+    centroids = NULL;
+    if (g_options.mean_calculation) {
+      // TODO:
+      // centroids = new vector<vector<float>>(numClusters, vector<float>(data->dimensionality, 0));
+    }
+
+    g_options.mean_calculation = 0;
+    part = clusterTSPg(g, numclu, centroids);
     t.tuck("end");
-    
+
     printf("a=%f\n", a);
+    return part;
   }
 
   nnGraph *createTSPg(nnGraph *g);
   void rpdiv(int *ind_arr, int *ind_arr2);
   void rpdivRecurseQueue(linkedList *qu, queueItem *qi);
+  int *clusterTSPg(nnGraph *g, int k, vector<vector<float>> *centroids);
+  float calcCluDist(nnGraph *g, int p1, int p2);
+  void nngUpdateNearest(nnGraph *g, int p1);
+  int nngCheckNearest(nnGraph *g, int p1);
+  void calcCost(nnGraph *g, gItem *gi);
+  void nngMergeNodes(nnGraph *g, nodeHeap *H, int p1, int p2);
+
   // void runDistTest() {
   // float a;
   // Timer t;
@@ -178,7 +199,6 @@ template <typename ORACLE> nnGraph *TSPclu<ORACLE>::createTSPg(nnGraph *g) {
       int a, b;
       a = ind_arr[i_data];
       b = ind_arr[i_data + 1];
-      // float d_tmp = distance(data, a, b);
       float d_tmp = oracle(a, b);
       // printf("a=%d b=%d d=%f\n",a,b,d_tmp);
       float _dist = scale_dist(d_tmp);
@@ -354,10 +374,111 @@ template <typename ORACLE> void TSPclu<ORACLE>::rpdivRecurseQueue(linkedList *qu
   }
 }
 
-#ifdef DISABLED
+template <typename ORACLE>
+int *TSPclu<ORACLE>::clusterTSPg(nnGraph *g, int k, vector<vector<float>> *centroids) {
+  printf("Clustering using tspg graph\n");
+  // g->data = data;
+  g->data = oracle.data;
+  gNode *node;
+  int rvar = 0;
+  int *partition = (int *)malloc(sizeof(int) * g->size);
 
-int grand() { return rand(); }
-float calc_clu_dist(nnGraph *g, int p1, int p2) {
+  nodeHeap *H = new nodeHeap();
+
+  for (int i = 0; i < g->size; i++) {
+    node = &(g->nodes[i]);
+    g->nodes[i].heap_index = -1;
+    // node->nearest_dist = 0;
+    for (auto gi : *(g->nodes[i].nset)) {
+      calcCost(g, gi);
+    }
+    nngUpdateNearest(g, node->id);
+    H->insert((void *)node, &(node->heap_index));
+    // printf("Initial sanity check:\n");
+    // g->nodes[i].nearesth->checkSanity();
+  }
+
+  int num_clu = g->size;
+  int i = 0;
+  for (i = 0; num_clu > k; i++) {
+    g->cur_iter = i;
+
+    node = (gNode *)H->data[1];
+    if (node->outdated) {
+      if (g_options.verbose > 2) {
+        printf("i=%d num_clu=%d MERGE p1=%d p2=%d nset_size=%ld stash_size=%ld (Dirty)\n", i,
+               num_clu, node->id, node->nearest_id, node->nset->size(), node->stash->size());
+      }
+      nngUpdateNearest(g, node->id);
+      H->update(1);
+      node->outdated = 0;
+      continue;
+    }
+
+    debug_assert(nngCheckNearest(g, node->id) == 0);
+
+    if (g_options.verbose > 1) {
+      printf("i=%d num_clu=%d MERGE p1=%d p2=%d nset_size=%ld stash_size=%ld", i, num_clu, node->id,
+             node->nearest_id, node->nset->size(), node->stash->size());
+
+      float nsum = 0.0;
+      for (int i = 0; i < num_clu; i++) {
+        gNode *nodetmp = (gNode *)H->data[i + 1];
+        nsum += nodetmp->nset->size();
+      }
+      printf(" mean_neighb=%f", nsum / num_clu);
+      printf("\n");
+    }
+
+    assert(node->outdated != 1);
+    assert(node->id != node->nearest->id);
+    assert(node->id < g->size && node->id >= 0);
+    assert(node->nearest->id < g->size && node->nearest->id >= 0);
+    assert(node->nearest_id == node->nearest->id);
+
+    nngMergeNodes(g, H, node->id, node->nearest_id);
+
+    num_clu--;
+
+    if (g_options.time_limit > 0 && g_timer.get_time() > g_options.time_limit) {
+      printf("Exit due to time limit\n");
+      exit(1);
+    }
+  }
+
+  // printf("i=%d\n", i);
+  // printf("heap size = %d \n", H->size);
+
+  int cluid = 1;
+  while (H->getSize() > 0) {
+    node = (gNode *)H->data[1];
+    H->remove(1);
+
+    for (int idA : *(node->stash)) {
+      partition[idA] = cluid;
+    }
+    // TODO:
+    // if (centroids != NULL && g_options.mean_calculation) {
+    // for (int i_dim = 0; i_dim < data->dimensionality; i_dim++) {
+    // // printf("%f ", node->mean[i_dim]);
+    // (*centroids)[cluid - 1][i_dim] = node->mean[i_dim];
+    // }
+    // }
+    cluid++;
+  }
+
+  printf("FINAL=1 time=%f ", g_timer.get_time());
+  graph_stat(g);
+  printf("\n");
+
+  return partition;
+}
+
+// #ifdef DISABLED
+
+// int grand() { return rand(); }
+
+template <typename ORACLE> float TSPclu<ORACLE>::calcCluDist(nnGraph *g, int p1, int p2) {
 
   int numsample = g_options.num_samples;
   // int numsample = 50;
@@ -367,7 +488,7 @@ float calc_clu_dist(nnGraph *g, int p1, int p2) {
   float d2;
   float _dist = 0.0;
 
-  // g_stat.num_calc_clu_dist++; //TODO: enable
+  // g_stat.num_calcCluDist++; //TODO: enable
 
   if (g->data->type == T_NUMERICAL && g_options.mean_calculation) {
     d2 = L2dist(g->nodes[p1].mean, g->nodes[p2].mean, g->data->dimensionality);
@@ -397,7 +518,7 @@ float calc_clu_dist(nnGraph *g, int p1, int p2) {
       int idA = (*(g->nodes[p1].stash))[rnd1];
       int idB = (*(g->nodes[p2].stash))[rnd2];
       // int idB = g->nodes[p2].stash[rnd2];
-      float dtmp = distance(g->data, idA, idB);
+      float dtmp = oracle(idA, idB);
       // _dist += dtmp * dtmp;
       _dist = dist_combine(_dist, scale_dist(dtmp));
     }
@@ -411,7 +532,7 @@ float calc_clu_dist(nnGraph *g, int p1, int p2) {
     // printf("samples=%d\n", g_options.num_samples);
     for (int idA : *(g->nodes[p1].stash)) {
       for (int idB : *(g->nodes[p2].stash)) {
-        float dtmp = distance(g->data, idA, idB);
+        float dtmp = oracle(idA, idB);
         // _dist += dtmp * dtmp;
         _dist = dist_combine(_dist, scale_dist(dtmp));
         // printf("_dist[%d,%d] = %f ",idA,idB,_dist);
@@ -428,7 +549,7 @@ float calc_clu_dist(nnGraph *g, int p1, int p2) {
   return d;
 }
 
-void nng_update_nearest(nnGraph *g, int p1) {
+template <typename ORACLE> void TSPclu<ORACLE>::nngUpdateNearest(nnGraph *g, int p1) {
   gNode *p1node = &(g->nodes[p1]);
   p1node->nearest_id = 0;
   p1node->nearest_dist = FLT_MAX;
@@ -443,7 +564,7 @@ void nng_update_nearest(nnGraph *g, int p1) {
   }
 }
 
-int nng_check_nearest(nnGraph *g, int p1) {
+template <typename ORACLE> int TSPclu<ORACLE>::nngCheckNearest(nnGraph *g, int p1) {
   gNode *p1node = &(g->nodes[p1]);
   // p1node->nearest_id = 0;
   // p1node->nearest_dist = FLT_MAX;
@@ -462,223 +583,36 @@ int nng_check_nearest(nnGraph *g, int p1) {
   return changed;
 }
 
-int *cluster_tspg(DataSet *data, nnGraph *g, int k, vector<vector<float>> *centroids) {
-  printf("Clustering using tspg graph\n");
-  g->data = data;
-  gNode *node;
-  int rvar = 0;
-  int *partition = (int *)malloc(sizeof(int) * g->size);
+// //TODO:
+// float scale_dist(float dtmp) {
 
-  nodeHeap *H = new nodeHeap();
+// switch (g_options.scale_method) {
+// case 2:
+// return dtmp * dtmp;
+// case 1:
+// return dtmp;
+// default:
+// return pow(dtmp, g_options.scale_method);
+// }
+// }
 
-  for (int i = 0; i < g->size; i++) {
-    node = &(g->nodes[i]);
-    g->nodes[i].heap_index = -1;
-    // node->nearest_dist = 0;
-    for (auto gi : *(g->nodes[i].nset)) {
-      calc_cost(g, gi);
-    }
-    nng_update_nearest(g, node->id);
-    H->insert((void *)node, &(node->heap_index));
-    // printf("Initial sanity check:\n");
-    // g->nodes[i].nearesth->checkSanity();
-  }
+// //TODO:
+// float dist_combine(float a, float b) {
+// switch (g_options.costf) {
+// case 2:
+// return MAX(a, b);
+// break;
 
-  int num_clu = g->size;
-  int i = 0;
-  for (i = 0; num_clu > k; i++) {
-    g->cur_iter = i;
+// case 4:
+// return MIN(a, b);
+// break;
 
-    node = (gNode *)H->data[1];
-    if (node->outdated) {
-      if (g_options.verbose > 2) {
-        printf("i=%d num_clu=%d MERGE p1=%d p2=%d nset_size=%ld stash_size=%ld (Dirty)\n", i,
-               num_clu, node->id, node->nearest_id, node->nset->size(), node->stash->size());
-      }
-      nng_update_nearest(g, node->id);
-      H->update(1);
-      node->outdated = 0;
-      continue;
-    }
+// default:
+// return a + b;
+// }
+// }
 
-    debug_assert(nng_check_nearest(g, node->id) == 0);
-
-    if (g_options.verbose > 1) {
-      printf("i=%d num_clu=%d MERGE p1=%d p2=%d nset_size=%ld stash_size=%ld", i, num_clu, node->id,
-             node->nearest_id, node->nset->size(), node->stash->size());
-
-      float nsum = 0.0;
-      for (int i = 0; i < num_clu; i++) {
-        gNode *nodetmp = (gNode *)H->data[i + 1];
-        nsum += nodetmp->nset->size();
-      }
-      printf(" mean_neighb=%f", nsum / num_clu);
-      printf("\n");
-    }
-
-    // if (node->nearest_id == 4906 || node->id == 4906) {
-    // printNodeData(g, node->id);
-    // printNodeData(g, node->nearest_id);
-    // }
-
-    assert(node->outdated != 1);
-    assert(node->id != node->nearest->id);
-    assert(node->id < g->size && node->id >= 0);
-    assert(node->nearest->id < g->size && node->nearest->id >= 0);
-    assert(node->nearest_id == node->nearest->id);
-
-    nng_merge_nodes(g, H, node->id, node->nearest_id);
-
-    num_clu--;
-
-    if (g_options.time_limit > 0 && g_timer.get_time() > g_options.time_limit) {
-      printf("Exit due to time limit\n");
-      exit(1);
-    }
-  }
-
-  // printf("i=%d\n", i);
-  // printf("heap size = %d \n", H->size);
-
-  int cluid = 1;
-  while (H->getSize() > 0) {
-    node = (gNode *)H->data[1];
-    H->remove(1);
-
-    for (int idA : *(node->stash)) {
-      partition[idA] = cluid;
-    }
-    if (centroids != NULL && g_options.mean_calculation) {
-      for (int i_dim = 0; i_dim < data->dimensionality; i_dim++) {
-        // printf("%f ", node->mean[i_dim]);
-        (*centroids)[cluid - 1][i_dim] = node->mean[i_dim];
-      }
-    }
-    cluid++;
-  }
-
-  printf("FINAL=1 time=%f ", g_timer.get_time());
-  graph_stat(g);
-  printf("\n");
-
-  return partition;
-}
-
-nnGraph *create_tspg(DataSet *data, nnGraph *g, int num_tsp, linkedList **ll_ret) {
-  kNNGraph *knng = NULL;
-  int update_count = 0;
-  float update_portion = 0.0;
-
-  int k_increment = 2;
-  int run_nndes = 0;
-  float update_portion_nndes = 0;
-  int i_iter;
-
-  // Two copies of tree. Optimization to avoid memory alloc/dealloc in future steps
-  int *ind_arr = (int *)safemalloc(sizeof(int) * data->size);
-  int *ind_arr2 = (int *)safemalloc(sizeof(int) * data->size);
-
-  linkedList *ll = initLinkedList();
-
-  if (g == NULL) {
-    g = init_nnGraph(data->size);
-  }
-
-  g->data = data;
-  // Calculate initial mean vectors if possible
-
-  if (g->data->type == T_NUMERICAL && g_options.mean_calculation) {
-    for (int i_data = 0; i_data < data->size; i_data++) {
-      g->nodes[i_data].mean = (float *)malloc(sizeof(float) * data->dimensionality);
-      for (int i_dim = 0; i_dim < data->dimensionality; i_dim++) {
-        g->nodes[i_data].mean[i_dim] = data->data[i_data][i_dim];
-      }
-    }
-  }
-
-  float total_dist_sum = 0.0;
-  for (i_iter = 0; i_iter < num_tsp; i_iter++) {
-    printf("iter=%d ", i_iter);
-    g_timer.tuck("time");
-    update_count = 0;
-    int update_count_nndes = 0;
-
-    for (int i_data = 0; i_data < data->size; i_data++) {
-      ind_arr[i_data] = i_data;
-    }
-
-    ll = initLinkedList();
-    int *tmp = (int *)malloc(sizeof(int));
-    *tmp = -1;
-    linkedListNode *firstnode = ll_add_node(ll, tmp);
-    rpdiv_queue(data, ind_arr, ind_arr2);
-
-#ifdef DISABLED00
-    int *map = (int *)malloc(sizeof(int) * data->size);
-    for (int i_data = 0; i_data < data->size; i_data++) {
-      map[i_data] = ind_arr[i_data];
-    }
-    ll_add_node(ll, (void *)map);
-#endif
-
-    float total_dist = 0;
-    for (int i_data = 0; i_data < data->size - 1; i_data++) {
-      int a, b;
-      a = ind_arr[i_data];
-      b = ind_arr[i_data + 1];
-      float d_tmp = distance(data, a, b);
-      // printf("a=%d b=%d d=%f\n",a,b,d_tmp);
-      float _dist = scale_dist(d_tmp);
-      total_dist = _dist;
-      nng_add_mutual_neighbor2(g, a, b, _dist);
-    }
-    total_dist_sum += total_dist;
-    printf("I=%d total_dist=%f\n", i_iter, total_dist);
-  }
-  printf("\nmean_tsp_length=%f\n", total_dist_sum / (i_iter + 1));
-  // graph_stat(g);
-  if (g_options.refine_iter > 0) {
-    refine_graph(data, g);
-    // graph_stat(g);
-  }
-
-  gNode *node;
-
-  free(ind_arr);
-  free(ind_arr2);
-
-  /*ll_free_list(ll);*/
-  (*ll_ret) = ll;
-  return g;
-}
-
-float scale_dist(float dtmp) {
-
-  switch (g_options.scale_method) {
-  case 2:
-    return dtmp * dtmp;
-  case 1:
-    return dtmp;
-  default:
-    return pow(dtmp, g_options.scale_method);
-  }
-}
-
-float dist_combine(float a, float b) {
-  switch (g_options.costf) {
-  case 2:
-    return MAX(a, b);
-    break;
-
-  case 4:
-    return MIN(a, b);
-    break;
-
-  default:
-    return a + b;
-  }
-}
-void calc_cost(nnGraph *g, gItem *gi) {
+template <typename ORACLE> void TSPclu<ORACLE>::calcCost(nnGraph *g, gItem *gi) {
   int p1 = gi->pair->id;
   int p2 = gi->id;
   float p1size = g->nodes[p1].stash->size();
@@ -721,7 +655,8 @@ void calc_cost(nnGraph *g, gItem *gi) {
   return;
 }
 
-void nng_merge_nodes(nnGraph *g, nodeHeap *H, int p1, int p2) {
+template <typename ORACLE>
+void TSPclu<ORACLE>::nngMergeNodes(nnGraph *g, nodeHeap *H, int p1, int p2) {
 
   gNode *p1node = &(g->nodes[p1]);
   gNode *p2node = &(g->nodes[p2]);
@@ -774,7 +709,7 @@ void nng_merge_nodes(nnGraph *g, nodeHeap *H, int p1, int p2) {
       // The case where neighbor of p2 is not a neighbor of p1
 
       float p1dist;
-      p1dist = calc_clu_dist(g, p1, gi->id);
+      p1dist = calcCluDist(g, p1, gi->id);
       newdist = dist_combine(gi->dist, p1dist);
 
       gItem *gi_p1 = nng_add_mutual_neighbor2(g, p1, gi->id, newdist /*dist*/);
@@ -800,13 +735,13 @@ void nng_merge_nodes(nnGraph *g, nodeHeap *H, int p1, int p2) {
     if (gi->visited == p2) {
       float p2dist;
 
-      p2dist = calc_clu_dist(g, p2, gi->id);
+      p2dist = calcCluDist(g, p2, gi->id);
       // newdist = gi->dist + p2dist;
       newdist = dist_combine(gi->dist, p2dist);
 
       gi->dist = newdist;
       ((gItem *)gi->pair)->dist = gi->dist;
-      // calc_cost(g, gi); //TODO:enable
+      // calcCost(g, gi); //TODO:enable
     }
 
     if (g->nodes[gi->id].nearest_id == p1 || g->nodes[gi->id].nearest_id == p2) {
@@ -835,11 +770,11 @@ void nng_merge_nodes(nnGraph *g, nodeHeap *H, int p1, int p2) {
 
   debug_assert(H->isHeap());
   for (auto gi : *(g->nodes[p1].nset)) {
-    calc_cost(g, gi);
+    calcCost(g, gi);
   }
 
   debug_assert(H->isHeap());
-  nng_update_nearest(g, p1);
+  nngUpdateNearest(g, p1);
 
   g->nodes[p2].stash->clear();
   g->nodes[p2].nset->clear();
@@ -858,4 +793,4 @@ void nng_merge_nodes(nnGraph *g, nodeHeap *H, int p1, int p2) {
   }
 }
 
-#endif
+// #endif
