@@ -109,6 +109,7 @@ void nng_add_neighbor(nnGraph *g, int p1, int p2, float dist) {
   /*gItem* gi = &node->neighbors[node->size];*/
   gi->id = p2;
   gi->dist = dist;
+  // printf("dist2=%f\n",gi->dist);
 
   g->nodes[p1].nset->insert(gi);
 
@@ -160,7 +161,24 @@ int nng_has_neighbor(nnGraph *g, int p1, int p2) {
   if (it != g->nodes[p1].nset->end()) {
     ret = 1;
   }
-  free(gi); 
+  free(gi);
+  return ret;
+}
+
+
+gItem* nng_get_neighbor(nnGraph *g, int p1, int p2) {
+
+  gItem *gi = (gItem *)malloc(sizeof(gItem));
+  gi->id = p2;
+  auto it = g->nodes[p1].nset->find(gi);
+  gItem* ret = NULL;
+  if (it != g->nodes[p1].nset->end()) {
+    ret = *it;
+  }
+  // std::cout << "decltype(it) is " << type_name<decltype(it)>() << '\n';
+  // std::cout << "decltype(it) is " << type_name<decltype(*it)>() << '\n';
+  free(gi);
+  // return gi;
   return ret;
 }
 
@@ -183,10 +201,10 @@ gItem *nng_get_neighbor2(nnGraph *g, int p1, int idx) {
   return gi;
 }
 
-int nng_get_neighbor(nnGraph *g, int p1, int idx) {
-  gItem *gi = (gItem *)ll_get_item(g->nodes[p1].neighbors, idx);
-  return gi->id;
-}
+// int nng_get_neighbor(nnGraph *g, int p1, int idx) {
+  // gItem *gi = (gItem *)ll_get_item(g->nodes[p1].neighbors, idx);
+  // return gi->id;
+// }
 
 int nng_num_neighbors(nnGraph *g, int p1) { return g->nodes[p1].neighbors->size; }
 
@@ -348,7 +366,7 @@ void test_nn_graph() {
   printf("\n");
 }
 
-nnGraph *read_ascii_graphf2(const char *fname, int clist) {
+nnGraph *read_ascii_graphf2(const char *fname, int clist, std::map<std::string, int> **cdmap) {
 
   std::string line;
   std::string delim = " ";
@@ -361,7 +379,9 @@ nnGraph *read_ascii_graphf2(const char *fname, int clist) {
   int buf[1000000];
 
   // std::map<std::string, int> m;
-  std::map<std::string, int> code_to_id;
+  // std::map<std::string, int> code_to_id;
+  std::map<std::string, int> *code_to_id = new std::map<std::string, int>;
+
   std::map<int, std::string> id_to_code;
   std::stringstream ss(line);
   std::string item;
@@ -383,8 +403,8 @@ nnGraph *read_ascii_graphf2(const char *fname, int clist) {
 
   nnGraph *graph = init_nnGraph(N);
 
-   // Read first line which contains the names/codes of the set items
-   // Convert to int id's
+  // Read first line which contains the names/codes of the set items
+  // Convert to int id's
   safeGetline(infile, line);
   {
     std::stringstream ss(line);
@@ -395,15 +415,15 @@ nnGraph *read_ascii_graphf2(const char *fname, int clist) {
       if (item.size() < 1) {
         continue;
       }
-      if (code_to_id.find(item) == code_to_id.end()) {
-        code_to_id[item] = numItems;
+      if ((*code_to_id).find(item) == (*code_to_id).end()) {
+        (*code_to_id)[item] = numItems;
         id_to_code[numItems] = item;
         numItems++;
       } else {
       }
-      id = code_to_id[item];
+      id = (*code_to_id)[item];
       // if (show_sets) {
-        // cout << "  word: '" << item << "' mapping:" << id << endl;
+      // cout << "  word: '" << item << "' mapping:" << id << endl;
       // }
       buf[setSize] = id;
       setSize++;
@@ -412,7 +432,7 @@ nnGraph *read_ascii_graphf2(const char *fname, int clist) {
 
   while (safeGetline(infile, line)) {
     vector<int> links;
-    vector<int> weights;
+    vector<float> weights;
 
     if (line.size() <= 1) {
       continue;
@@ -458,5 +478,14 @@ nnGraph *read_ascii_graphf2(const char *fname, int clist) {
       }
     }
   }
+  
+    // printf("##F43:%d\n",(*cdmap)[string("F43")]);
+    printf("#Z#F43:%d\n",(*code_to_id)[string("F43")]);
+  if (cdmap != NULL) {
+    // cdmap = &code_to_id;
+    // cdmap = code_to_id;
+    *cdmap = code_to_id;
+  }
+    // printf("##F43:%d\n",(**cdmap)[string("F43")]);
   return graph;
 }

@@ -101,7 +101,7 @@ public:
   DataSet *data;
   // GraphDistance(nnGraph *graph_) : graph(graph_) { N = graph->size; }
   // GraphDistance(DataSet *data_);
-  L2df(DataSet *data_) : data(data_){size=data->size;};
+  L2df(DataSet *data_) : data(data_) { size = data->size; };
   // float operator()(int i, int j) const __attribute__((noinline));
   float operator()(int i, int j) const;
 };
@@ -137,17 +137,29 @@ public:
   float operator()(int i, int j) const;
 };
 
-float GraphDistance::operator()(int i, int j) const {
-  return i * j - 3.2;
-  // const typename M::value_type *first1 = m[i];
-  // const typename M::value_type *first2 = m[j];
-  // float r = 0.0;
-  // for (int i = 0; i < m.getDim(); ++i) {
-  // float v = first1[i] - first2[i];
-  // r += v * v;
+// float GraphDistance::operator()(int a, int b) const {
+  // // sd->bigrams[a]
+  // // sd->setSize[a]
+
+  // for (int i = 0; i < data->setSize[a]; i++) {
+    // for (int j = 0; j < data->setSize[b]; j++) {
+    // float v = 1.0;
+    // int code1 = data->bigrams[a][i];
+    // int code2 = data->bigrams[b][j];
+    // // graph->nodes[i];
+    // nng_get_neighbor(graph,1,2);
+    // }
   // }
-  // return sqrt(r);
-}
+  // return a * b - 3.2;
+  // // const typename M::value_type *first1 = m[i];
+  // // const typename M::value_type *first2 = m[j];
+  // // float r = 0.0;
+  // // for (int i = 0; i < m.getDim(); ++i) {
+  // // float v = first1[i] - first2[i];
+  // // r += v * v;
+  // // }
+  // // return sqrt(r);
+// }
 
 // NNDescent<OracleL2<FloatDataset> > nndes(data,N, K, S, oracle, GRAPH_BOTH);
 

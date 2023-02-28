@@ -1,9 +1,53 @@
 
 #include "dataset.hpp"
 
-
 // GraphDistance::GraphDistance(nnGraph *graph_) : graph(graph_) { N = graph->size; }
-GraphDistance::GraphDistance(nnGraph *graph_, DataSet* data_) : graph(graph_), data(data_) { size = data->size; }
+GraphDistance::GraphDistance(nnGraph *graph_, DataSet *data_) : graph(graph_), data(data_) {
+  size = data->size;
+}
+
+float GraphDistance::operator()(int a, int b) const {
+  // sd->bigrams[a]
+  // sd->setSize[a]
+  gItem *item;
+
+  float ssum=0.0;
+  float t=1.0;
+  int ncodes1 = data->setSize[a];
+  int ncodes2 = data->setSize[b];
+  for (int i = 0; i < ncodes1; i++) {
+    for (int j = 0; j < ncodes2; j++) {
+      float v = 1.0;
+      int code1 = data->bigrams[a][i];
+      int code2 = data->bigrams[b][j];
+      // graph->nodes[i];
+      if (code1 == code2) {
+      v = 1.0;
+      } else {
+        v = 1.0;
+        item = nng_get_neighbor(graph, code1, code2);
+        if (item != NULL) {
+          v = item->dist;
+          // printf("dist:%f\n",item->dist);
+        }
+        v = (1 + v) / v; // TODO: Scaling as parameter
+      }
+      ssum+=v;
+    }
+  }
+  
+  t = ssum/(ncodes2*ncodes2);
+  return t;
+  // return a * b - 3.2;
+  // const typename M::value_type *first1 = m[i];
+  // const typename M::value_type *first2 = m[j];
+  // float r = 0.0;
+  // for (int i = 0; i < m.getDim(); ++i) {
+  // float v = first1[i] - first2[i];
+  // r += v * v;
+  // }
+  // return sqrt(r);
+}
 
 float dice_set_distance(DataSet *sd, int a, int b) {
   float d =
@@ -44,6 +88,108 @@ std::istream &safeGetline(std::istream &is, std::string &t) {
       t += (char)c;
     }
   }
+}
+
+DataSet *loadSetDataWithMapping(std::string infname, std::map<std::string, int> *code_to_id_) {
+  std::string line;
+  std::string delim = " ";
+  std::ifstream infile(infname);
+  DataSet *sd = (DataSet *)malloc(sizeof(DataSet));
+  sd->strings = new vector<string>;
+  sd->type = T_SET; // String data
+  int numLines = 0;
+  int numItems = 0;
+  int buf[1000000];
+  int mapping_as_parameter = 0;
+
+  // std::map<std::string, int> m;
+  std::map<std::string, int> *code_to_id;
+  if (code_to_id_ != NULL) {
+    code_to_id = code_to_id_;
+    mapping_as_parameter = 1;
+  }
+  std::stringstream ss(line);
+  std::string item;
+  int id = -1;
+  sd->size = 0;
+  while (std::getline(infile, line)) {
+    sd->size++;
+  }
+  infile.clear();
+  infile.seekg(0, ios::beg);
+  printf("Num lines: %d\n", sd->size);
+
+  sd->bigrams = (int **)malloc(sizeof(int *) * sd->size);
+  sd->setSize = (int *)malloc(sizeof(int) * sd->size);
+
+  // while (std::getline(infile, line)) {
+  int show_sets = 1;
+  while (safeGetline(infile, line)) {
+    if (numLines >= (sd->size)) {
+      break;
+      // safeGetline seems to produce one empty line that is between last \n and EOF
+    }
+    sd->strings->push_back(line);
+    if (show_sets) {
+      cout << "str: " << line << endl;
+    }
+    std::stringstream ss(line);
+    std::string item;
+    int id = -1;
+    int setSize = 0;
+    while (std::getline(ss, item, ' ')) {
+      if (item.size() < 1) {
+        continue;
+      }
+      if ((*code_to_id).find(item) == (*code_to_id).end()) {
+        if (mapping_as_parameter) {
+          // printf("Code:%s\n", item.c_str());
+          printf("Code not found in mapping:%s\n", item.c_str());
+          // terminal_error("Code not found in provided mapping\n");
+        }
+        (*code_to_id)[item] = numItems;
+        numItems++;
+      } else {
+      }
+      id = (*code_to_id)[item];
+      if (show_sets) {
+        cout << "  word: '" << item << "' mapping:" << id << endl;
+      }
+      buf[setSize] = id;
+      setSize++;
+    }
+    if (show_sets) {
+
+      cout << "ids: ";
+    }
+    sd->bigrams[numLines] = (int *)malloc(sizeof(int) * setSize);
+    sd->setSize[numLines] = setSize;
+    for (int i = 0; i < setSize; i++) {
+      sd->bigrams[numLines][i] = buf[i];
+      if (show_sets) {
+
+        cout << sd->bigrams[numLines][i] << " ";
+      }
+    }
+    if (show_sets) {
+
+      cout << endl;
+    }
+
+    numLines++;
+    if (numLines > 5) {
+      show_sets = 0;
+    }
+    if (numLines == (sd->size - 1)) {
+      show_sets = 1;
+    }
+  }
+
+  cout << "============" << endl;
+  cout << flush;
+  printf("Number of objects: %d\n", numLines);
+
+  return sd;
 }
 
 DataSet *loadSetData(std::string infname) {

@@ -99,6 +99,7 @@ int write_output_pa(int *part, int size, arg_file *outfn, int numClusters,
 int main(int argc, char *argv[]) {
 
   signal(SIGSEGV, handler);
+  setbuf(stdout, NULL); //Disable buffering on stdout
 
   double *distmat = NULL;
 
@@ -263,14 +264,16 @@ int main(int argc, char *argv[]) {
     srand(seed);
     printf("RNG seed: %d\n", seed);
 
-    graph = read_ascii_graphf2(a_graphfn->filename[0], 1);
+    std::map<std::string, int> *cdmap;
+    graph = read_ascii_graphf2(a_graphfn->filename[0], 1, &cdmap);
+    printf("#2#F43:%d\n", (*cdmap)[string("F43")]);
     // data = loadSetData(infn->filename[0]);
     // data = loadSetData(infn->filename[0]);
-    data = read_ascii_dataset(infn->filename[0]);
     int N = 10;
     // OracleA oracle(20);
 
-    if (1) {
+    if (0) {
+      data = read_ascii_dataset(infn->filename[0]);
       L2df l2(data);
 
       // data = loadSetData(infn->filename[0]);
@@ -296,10 +299,16 @@ int main(int argc, char *argv[]) {
       // fun_ptr = &distf;
       // }
       // GraphDistance graphd(graph);
+      g_timer.tick();
+      data = loadSetDataWithMapping(infn->filename[0], cdmap);
       GraphDistance graphd(graph, data);
-      // TSPclu<OracleA> tspgclu(10,3, oracle);
-      TSPclu<GraphDistance> tspgclu(10, 3, graphd);
-      tspgclu.runClustering();
+      TSPclu<GraphDistance> tspgclu(20 /*K=clusters*/, 10 /*num_tsp*/, graphd);
+      int *part = tspgclu.runClustering();
+      if (outfn->count > 0) {
+        write_output_pa(part, data->size, outfn, numClusters, 1);
+      }
+
+      return 0;
     }
     // tspgclu.runDistTest();
     // tspgclu.runDistTest2();

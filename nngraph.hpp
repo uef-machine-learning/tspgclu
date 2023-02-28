@@ -125,4 +125,7 @@ typedef struct nnGraph {
   DataSet *data;
 } nnGraph;
 
+
+gItem* nng_get_neighbor(nnGraph *g, int p1, int p2); 
+
 #endif
