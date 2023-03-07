@@ -2,8 +2,32 @@
 #include "dataset.hpp"
 
 // GraphDistance::GraphDistance(nnGraph *graph_) : graph(graph_) { N = graph->size; }
-GraphDistance::GraphDistance(nnGraph *graph_, DataSet *data_) : graph(graph_), data(data_) {
+GraphDistance::GraphDistance(nnGraph *graph_, DataSet *data_, int ncodes)
+    : graph(graph_), data(data_) {
   size = data->size;
+
+  dm = new float *[ncodes];
+  for (int i = 0; i < ncodes; ++i) {
+    dm[i] = new float[ncodes];
+  }
+
+  for (int i = 0; i < ncodes; ++i) {
+    for (int j = 0; j < ncodes; ++j) {
+      gItem *item;
+      float v = 1.0;
+      if (i < graph->size && j < graph->size) {
+        item = nng_get_neighbor(graph, i, j);
+        if (item != NULL) {
+          v = item->dist;
+          // printf("dist:%f\n",item->dist);
+        }
+      }
+      float scaledv = (1 + v) / v;
+      dm[i][j] = scaledv;
+    }
+  }
+
+  // item = nng_get_neighbor(graph, code1, code2);
 }
 
 float GraphDistance::operator()(int a, int b) const {
@@ -11,8 +35,8 @@ float GraphDistance::operator()(int a, int b) const {
   // sd->setSize[a]
   gItem *item;
 
-  float ssum=0.0;
-  float t=1.0;
+  float ssum = 0.0;
+  float t = 1.0;
   int ncodes1 = data->setSize[a];
   int ncodes2 = data->setSize[b];
   for (int i = 0; i < ncodes1; i++) {
@@ -22,21 +46,21 @@ float GraphDistance::operator()(int a, int b) const {
       int code2 = data->bigrams[b][j];
       // graph->nodes[i];
       if (code1 == code2) {
-      v = 1.0;
-      } else {
         v = 1.0;
-        item = nng_get_neighbor(graph, code1, code2);
-        if (item != NULL) {
-          v = item->dist;
-          // printf("dist:%f\n",item->dist);
-        }
-        v = (1 + v) / v; // TODO: Scaling as parameter
+      } else {
+        // v = 1.0;
+        // if (item != NULL) {
+        // v = item->dist;
+        // // printf("dist:%f\n",item->dist);
+        // }
+        // v = (1 + v) / v; // TODO: Scaling as parameter
+        v = dm[i][j];
       }
-      ssum+=v;
+      ssum += v;
     }
   }
-  
-  t = ssum/(ncodes2*ncodes2);
+
+  t = ssum / (ncodes1 * ncodes2);
   return t;
   // return a * b - 3.2;
   // const typename M::value_type *first1 = m[i];

@@ -260,9 +260,10 @@ int main(int argc, char *argv[]) {
 
   nnGraph *graph = NULL;
   if (a_graphfn->count >= 1) {
-    int seed = time(NULL);
+    // int seed = time(NULL);
+    int seed = 1677674001;
     srand(seed);
-    printf("RNG seed: %d\n", seed);
+    printf("RNGg seed: %d\n", seed);
 
     std::map<std::string, int> *cdmap;
     graph = read_ascii_graphf2(a_graphfn->filename[0], 1, &cdmap);
@@ -301,7 +302,7 @@ int main(int argc, char *argv[]) {
       // GraphDistance graphd(graph);
       g_timer.tick();
       data = loadSetDataWithMapping(infn->filename[0], cdmap);
-      GraphDistance graphd(graph, data);
+      GraphDistance graphd(graph, data, cdmap->size());
       TSPclu<GraphDistance> tspgclu(20 /*K=clusters*/, 10 /*num_tsp*/, graphd);
       int *part = tspgclu.runClustering();
       if (outfn->count > 0) {

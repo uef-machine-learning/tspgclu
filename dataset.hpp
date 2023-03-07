@@ -129,10 +129,11 @@ class GraphDistance {
   // const M &m;
 public:
   int size;
+  float **dm;
   nnGraph *graph;
   DataSet *data;
   // GraphDistance(nnGraph *graph_) : graph(graph_) { N = graph->size; }
-  GraphDistance(nnGraph *graph_, DataSet *data_);
+  GraphDistance(nnGraph *graph_, DataSet *data_, int ncodes);
   // float operator()(int i, int j) const __attribute__((noinline));
   float operator()(int i, int j) const;
 };

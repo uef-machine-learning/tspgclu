@@ -26,7 +26,7 @@ public:
     printf("N=%d K=%d num_tsp=%d\n", size, numclu, num_tsp);
   }
 
-  int* runClustering() {
+  int *runClustering() {
     float a;
     Timer t;
     t.tick();
@@ -400,8 +400,14 @@ int *TSPclu<ORACLE>::clusterTSPg(nnGraph *g, int k, vector<vector<float>> *centr
 
   int num_clu = g->size;
   int i = 0;
+  int pold = 0;
   for (i = 0; num_clu > k; i++) {
     g->cur_iter = i;
+    int pdone = (100*(g->size - num_clu))/(g->size);
+    if (pdone > pold) {
+      printf("progress:%d%% time=%f\n",pdone,g_timer.get_time());
+    }
+    pold = pdone;
 
     node = (gNode *)H->data[1];
     if (node->outdated) {
@@ -506,9 +512,6 @@ template <typename ORACLE> float TSPclu<ORACLE>::calcCluDist(nnGraph *g, int p1,
     d2 = d2 * Na * Nb + (Sa * Nb) / Na + (Na * Sb) / Nb;
     return d2;
     // dist*Na*Nb + (Sa*Nb)/Na + (Na*Sb)/Nb
-    // printf("d2 = %f, ", d);
-    // TODO: in case T_NUMERICAL, but non-euclidean distance
-    // return d;
   }
 
   if (numsample > 0 && size1 * size2 > numsample) {

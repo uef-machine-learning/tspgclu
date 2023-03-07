@@ -29,6 +29,10 @@ tspg: $(DEPS) $(OBJS)
 
 tspg_debug: $(DEPS) $(OBJS)
 	$(GPP) $(DEBUGFLAGS) $(DISABLEWARN) main.cpp $(LIBS) $(OBJS) -o tspg_debug
+	
+tspg_debug2: $(DEPS) $(OBJS)
+	$(GPP) $(DEBUGFLAGS) $(DISABLEWARN) main.cpp $(LIBS) $(OBJS) -o tspg_debug2
+
 
 clean:
 	rm -f $(PROGS) *.o
