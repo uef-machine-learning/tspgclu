@@ -3,13 +3,35 @@ template <typename ORACLE> class TSPclu {
 private:
   int numclu;
   int num_tsp;
-  const ORACLE &oracle;
+  // const ORACLE &oracle;
+  ORACLE *oracle;
+  bool mean_calculation;
+
+  // double minkowski_p;
+  // int costf; // Cost function
+  // int distance_type;
+  // int gtype;
+  // int max_neighbors;
+  // int min_neighbors;
+  // int neighbor_dist_estimation;
+  // int nndes_K;
+  // int num_samples;
+  // int num_threads;
+  // int num_tsp;
+  // int prune_strategy;
+  // int recall_K;
+  // int refine_graph;
+  // int refine_iter;
+  // int scale_method;
+  // int time_limit;
+  // int uncle_adjustment;
+  // int verbose;
 
   int size;
 
   // int update(int p1, int p2) {
 
-  // float dist = oracle(p1, p2);
+  // float dist = (*oracle)(p1, p2);
   // return 1;
   // }
 
@@ -18,11 +40,11 @@ public:
 
   // long long int getCost() const { return cost; }
 
-  TSPclu(int K_, int num_tsp_, const ORACLE &oracle_)
-      : numclu(K_), num_tsp(num_tsp_), oracle(oracle_) {
-    size = oracle.size;
+  TSPclu(int K_, int num_tsp_, ORACLE *oracle_, int mean_calculation_)
+      : numclu(K_), num_tsp(num_tsp_), oracle(oracle_), mean_calculation(mean_calculation_) {
+    size = oracle->size;
 
-    // printf("N=%d, %d K=%d\n", N, oracle.N, K);
+    // printf("N=%d, %d K=%d\n", N, oracle->N, K);
     printf("N=%d K=%d num_tsp=%d\n", size, numclu, num_tsp);
   }
 
@@ -31,7 +53,7 @@ public:
     Timer t;
     t.tick();
     // for (int i = 0; i < 1e9; i++) {
-    // a += oracle(i, i / 2);
+    // a += (*oracle)(i, i / 2);
     // }
     nnGraph *g;
     g = createTSPg(NULL);
@@ -39,9 +61,10 @@ public:
 
     vector<vector<float>> *centroids;
     centroids = NULL;
-    if (g_options.mean_calculation) {
+    if (mean_calculation) {
       // TODO:
       // centroids = new vector<vector<float>>(numClusters, vector<float>(data->dimensionality, 0));
+      centroids = new vector<vector<float>>(numclu, vector<float>(oracle->dimensionality, 0));
     }
 
     g_options.mean_calculation = 0;
@@ -67,7 +90,7 @@ public:
   // Timer t;
   // t.tick();
   // for (int i = 0; i < 1e9; i++) {
-  // a += oracle(i, i / 2);
+  // a += (*oracle)(i, i / 2);
   // }
   // t.tuck("end");
   // printf("a=%f\n", a);
@@ -115,7 +138,7 @@ template <typename ORACLE> void TSPclu<ORACLE>::rpdiv(int *ind_arr, int *ind_arr
   qiroot->llnode = NULL;
   qiroot->input_arr = ind_arr;
   qiroot->input_arr2 = ind_arr2;
-  qiroot->input_arr_size = oracle.size;
+  qiroot->input_arr_size = oracle->size;
   qiroot->is_left_child = 1;
   qiroot->uncle_id = -1;
   linkedListNode *top;
@@ -148,8 +171,8 @@ template <typename ORACLE> nnGraph *TSPclu<ORACLE>::createTSPg(nnGraph *g) {
   int i_iter;
 
   // Two copies of tree. Optimization to avoid memory alloc/dealloc in future steps
-  int *ind_arr = (int *)safemalloc(sizeof(int) * oracle.size);
-  int *ind_arr2 = (int *)safemalloc(sizeof(int) * oracle.size);
+  int *ind_arr = (int *)safemalloc(sizeof(int) * oracle->size);
+  int *ind_arr2 = (int *)safemalloc(sizeof(int) * oracle->size);
 
   linkedList *ll = initLinkedList();
 
@@ -160,14 +183,14 @@ template <typename ORACLE> nnGraph *TSPclu<ORACLE>::createTSPg(nnGraph *g) {
   // Calculate initial mean vectors if possible
 
   // TODO:
-  // if (g->data->type == T_NUMERICAL && g_options.mean_calculation) {
-  // for (int i_data = 0; i_data < data->size; i_data++) {
-  // g->nodes[i_data].mean = (float *)malloc(sizeof(float) * data->dimensionality);
-  // for (int i_dim = 0; i_dim < data->dimensionality; i_dim++) {
-  // g->nodes[i_data].mean[i_dim] = data->data[i_data][i_dim];
-  // }
-  // }
-  // }
+  if (mean_calculation) {
+    for (int i_data = 0; i_data < size; i_data++) {
+      g->nodes[i_data].mean = (float *)malloc(sizeof(float) * oracle->dimensionality);
+      for (int i_dim = 0; i_dim < oracle->dimensionality; i_dim++) {
+        g->nodes[i_data].mean[i_dim] = oracle->getVecValue(i_data, i_dim);
+      }
+    }
+  }
 
   float total_dist_sum = 0.0;
   for (i_iter = 0; i_iter < num_tsp; i_iter++) {
@@ -176,7 +199,7 @@ template <typename ORACLE> nnGraph *TSPclu<ORACLE>::createTSPg(nnGraph *g) {
     update_count = 0;
     int update_count_nndes = 0;
 
-    for (int i_data = 0; i_data < oracle.size; i_data++) {
+    for (int i_data = 0; i_data < oracle->size; i_data++) {
       ind_arr[i_data] = i_data;
     }
 
@@ -195,11 +218,11 @@ template <typename ORACLE> nnGraph *TSPclu<ORACLE>::createTSPg(nnGraph *g) {
 #endif
 
     float total_dist = 0;
-    for (int i_data = 0; i_data < oracle.size - 1; i_data++) {
+    for (int i_data = 0; i_data < oracle->size - 1; i_data++) {
       int a, b;
       a = ind_arr[i_data];
       b = ind_arr[i_data + 1];
-      float d_tmp = oracle(a, b);
+      float d_tmp = (*oracle)(a, b);
       // printf("a=%d b=%d d=%f\n",a,b,d_tmp);
       float _dist = scale_dist(d_tmp);
       total_dist = _dist;
@@ -249,8 +272,8 @@ template <typename ORACLE> void TSPclu<ORACLE>::rpdivRecurseQueue(linkedList *qu
   // Put B closer to uncle if left child
   // A closer to uncle if right child
   if (uncle_id != -1 && g_options.uncle_adjustment == 1) {
-    float A_to_uncle = oracle(uncle_id, randind_A);
-    float B_to_uncle = oracle(uncle_id, randind_B);
+    float A_to_uncle = (*oracle)(uncle_id, randind_A);
+    float B_to_uncle = (*oracle)(uncle_id, randind_B);
     int tmpi;
     if (is_left_child == 1 && A_to_uncle < B_to_uncle) {
       tmpi = randind_B;
@@ -270,8 +293,8 @@ template <typename ORACLE> void TSPclu<ORACLE>::rpdivRecurseQueue(linkedList *qu
     int tmpi;
     if (is_left_child == 1) {
       uncle_id = *((int *)llnode->next->content);
-      float A_to_uncle = oracle(uncle_id, randind_A);
-      float B_to_uncle = oracle(uncle_id, randind_B);
+      float A_to_uncle = (*oracle)(uncle_id, randind_A);
+      float B_to_uncle = (*oracle)(uncle_id, randind_B);
       if (A_to_uncle < B_to_uncle) {
         tmpi = randind_B;
         randind_B = randind_A;
@@ -281,8 +304,8 @@ template <typename ORACLE> void TSPclu<ORACLE>::rpdivRecurseQueue(linkedList *qu
     }
     if (is_left_child == 0) {
       uncle_id = *((int *)llnode->prev->content);
-      float A_to_uncle = oracle(uncle_id, randind_A);
-      float B_to_uncle = oracle(uncle_id, randind_B);
+      float A_to_uncle = (*oracle)(uncle_id, randind_A);
+      float B_to_uncle = (*oracle)(uncle_id, randind_B);
       if (A_to_uncle > B_to_uncle) {
         tmpi = randind_B;
         randind_B = randind_A;
@@ -298,10 +321,10 @@ template <typename ORACLE> void TSPclu<ORACLE>::rpdivRecurseQueue(linkedList *qu
 
       int previd = *((int *)llnode->prev->content); // previous in the chain
       int nextid = *((int *)llnode->next->content); // next in the chain
-      float A_to_prev = oracle(previd, randind_A);
-      float A_to_next = oracle(nextid, randind_A);
-      float B_to_prev = oracle(previd, randind_B);
-      float B_to_next = oracle(nextid, randind_B);
+      float A_to_prev = (*oracle)(previd, randind_A);
+      float A_to_next = (*oracle)(nextid, randind_A);
+      float B_to_prev = (*oracle)(previd, randind_B);
+      float B_to_next = (*oracle)(nextid, randind_B);
 
       if (A_to_prev + B_to_next > A_to_next + B_to_prev) {
         tmpi = randind_B;
@@ -315,8 +338,8 @@ template <typename ORACLE> void TSPclu<ORACLE>::rpdivRecurseQueue(linkedList *qu
   int class_B_count = 0;
 
   for (int i = 0; i < input_arr_size; i++) {
-    float dist_A = oracle(input_arr[i], randind_A);
-    float dist_B = oracle(input_arr[i], randind_B);
+    float dist_A = (*oracle)(input_arr[i], randind_A);
+    float dist_B = (*oracle)(input_arr[i], randind_B);
 
     if (dist_A < dist_B) {
       // put to left side
@@ -379,7 +402,7 @@ template <typename ORACLE>
 int *TSPclu<ORACLE>::clusterTSPg(nnGraph *g, int k, vector<vector<float>> *centroids) {
   printf("Clustering using tspg graph\n");
   // g->data = data;
-  g->data = oracle.data;
+  // g->data = oracle->data;
   gNode *node;
   int rvar = 0;
   int *partition = (int *)malloc(sizeof(int) * g->size);
@@ -465,12 +488,12 @@ int *TSPclu<ORACLE>::clusterTSPg(nnGraph *g, int k, vector<vector<float>> *centr
       partition[idA] = cluid;
     }
     // TODO:
-    // if (centroids != NULL && g_options.mean_calculation) {
-    // for (int i_dim = 0; i_dim < data->dimensionality; i_dim++) {
-    // // printf("%f ", node->mean[i_dim]);
-    // (*centroids)[cluid - 1][i_dim] = node->mean[i_dim];
-    // }
-    // }
+    if (mean_calculation) {
+      for (int i_dim = 0; i_dim < oracle->dimensionality; i_dim++) {
+        // printf("%f ", node->mean[i_dim]);
+        (*centroids)[cluid - 1][i_dim] = node->mean[i_dim];
+      }
+    }
     cluid++;
   }
 
@@ -498,8 +521,11 @@ template <typename ORACLE> float TSPclu<ORACLE>::calcCluDist(nnGraph *g, int p1,
 
   // g_stat.num_calcCluDist++; //TODO: enable
 
-  if (g->data->type == T_NUMERICAL && g_options.mean_calculation) {
-    d2 = L2dist(g->nodes[p1].mean, g->nodes[p2].mean, g->data->dimensionality);
+  // if (g->data->type == T_NUMERICAL && g_options.mean_calculation) {
+  if (mean_calculation) {
+    // d2 = L2dist(g->nodes[p1].mean, g->nodes[p2].mean, g->data->dimensionality);
+    d2 = L2dist(g->nodes[p1].mean, g->nodes[p2].mean, oracle->dimensionality);
+
     // printf("d = %f, ", d);
     // printf("m = %f %f %f %f ",
     // g->nodes[p1].mean[0],g->nodes[p2].mean[0],g->nodes[p1].mean[g->data->dimensionality-1],g->nodes[p2].mean[g->data->dimensionality-1]
@@ -523,7 +549,7 @@ template <typename ORACLE> float TSPclu<ORACLE>::calcCluDist(nnGraph *g, int p1,
       int idA = (*(g->nodes[p1].stash))[rnd1];
       int idB = (*(g->nodes[p2].stash))[rnd2];
       // int idB = g->nodes[p2].stash[rnd2];
-      float dtmp = oracle(idA, idB);
+      float dtmp = (*oracle)(idA, idB);
       // _dist += dtmp * dtmp;
       _dist = dist_combine(_dist, scale_dist(dtmp));
     }
@@ -537,7 +563,7 @@ template <typename ORACLE> float TSPclu<ORACLE>::calcCluDist(nnGraph *g, int p1,
     // printf("samples=%d\n", g_options.num_samples);
     for (int idA : *(g->nodes[p1].stash)) {
       for (int idB : *(g->nodes[p2].stash)) {
-        float dtmp = oracle(idA, idB);
+        float dtmp = (*oracle)(idA, idB);
         // _dist += dtmp * dtmp;
         _dist = dist_combine(_dist, scale_dist(dtmp));
         // printf("_dist[%d,%d] = %f ",idA,idB,_dist);
@@ -747,7 +773,7 @@ void TSPclu<ORACLE>::nngMergeNodes(nnGraph *g, nodeHeap *H, int p1, int p2) {
 
       gi->dist = newdist;
       ((gItem *)gi->pair)->dist = gi->dist;
-      // calcCost(g, gi); //TODO:enable
+      // calcCost(g, gi); //TODO:enable??
     }
 
     if (g->nodes[gi->id].nearest_id == p1 || g->nodes[gi->id].nearest_id == p2) {
@@ -763,8 +789,8 @@ void TSPclu<ORACLE>::nngMergeNodes(nnGraph *g, nodeHeap *H, int p1, int p2) {
 
   float w = ((float)p1size) / (p1size + p2size);
 
-  if (g->data->type == T_NUMERICAL && g_options.mean_calculation) {
-    for (int i_dim = 0; i_dim < g->data->dimensionality; i_dim++) {
+  if (mean_calculation) {
+    for (int i_dim = 0; i_dim < oracle->dimensionality; i_dim++) {
       p1node->mean[i_dim] = p1node->mean[i_dim] * w + p2node->mean[i_dim] * (1 - w);
     }
   }

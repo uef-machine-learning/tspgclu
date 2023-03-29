@@ -464,8 +464,15 @@ int main(int argc, char *argv[]) {
     int N = 10;
     g_timer.tick();
     data = loadSetDataWithMapping(infn->filename[0], cdmap);
-    GraphDistance graphd(graph, data, cdmap->size());
-    TSPclu<GraphDistance> tspgclu(numClusters /*K=clusters*/, g_options.num_tsp /*num_tsp*/, graphd);
+    GraphDistance* graphd = new GraphDistance(graph, data, cdmap->size());
+    printf("graphd size: %d\n", graphd->size);
+    
+    // TSPclu<GraphDistance> tspgclu(numClusters /*K=clusters*/, g_options.num_tsp /*num_tsp*/, graphd,false /*mean calculation*/);
+    
+    TSPclu<Distance> tspgclu(numClusters /*K=clusters*/, g_options.num_tsp /*num_tsp*/, 
+    dynamic_cast<Distance*>(graphd),false /*mean calculation*/);
+    
+    
     int *part = tspgclu.runClustering();
     dealloc_nnGraph(graph);
     if (outfn->count > 0) {
@@ -476,6 +483,51 @@ int main(int argc, char *argv[]) {
 
     return 0;
   }
+   
+     // Cluster using the TSP-graph
+  if (algo->count > 0 && strcmp(algo->sval[0], "tspgclu") == 0) {
+    printf("Algorithm: TSPg-clu\n");
+
+    nnGraph *nng = init_nnGraph(data->size);
+    
+    L2df* dfun = new L2df(data);
+    printf("defun size: %d\n", dfun->size);
+    
+    TSPclu<Distance> tspgclu(numClusters /*K=clusters*/, g_options.num_tsp /*num_tsp*/, 
+    dynamic_cast<Distance*>(dfun),true /*mean calculation*/);
+
+    if (g_options.gtype == RPDIV) {
+      nng = create_tspg(data, nng, g_options.num_tsp, &ll);
+    } else if (g_options.gtype == COMPL) {
+      nng = create_complete_graph(data, nng);
+    }
+
+    printf("nng stat ");
+    graph_stat(nng);
+    printf("\n");
+
+    vector<vector<float>> *centroids;
+    centroids = NULL;
+    if (g_options.mean_calculation) {
+      centroids = new vector<vector<float>>(numClusters, vector<float>(data->dimensionality, 0));
+    }
+    //
+    
+    //TODO: return centroids
+    // int *part = cluster_tspg(data, nng, numClusters, centroids);
+    int *part = tspgclu.runClustering();
+
+    // if (g_options.mean_calculation && a_centroidfn->count >= 1) {
+      // write_flt_vec2_to_file(a_centroidfn->filename[0], centroids);
+    // }
+
+    if (outfn->count > 0) {
+      write_output_pa(part, data->size, outfn, numClusters, output_write_header);
+    }
+  }
+
+return 0 ;
+   
 
   // Create the TSP-graph
   if (algo->count > 0 && strcmp(algo->sval[0], "tspg") == 0) {

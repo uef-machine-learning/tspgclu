@@ -52,57 +52,49 @@ struct DataSet {
 #endif
 };
 
-template <typename M> class OracleL2 {
-  const M &m;
 
+class Distance {
 public:
-  OracleL2(const M &m_) : m(m_) {}
-  float operator()(int i, int j) const __attribute__((noinline));
+  virtual float operator()(int i, int j) const { return 0; };
+  Distance(){};
+  int size;
+  int dimensionality;
+  
+  // Need to implement if mean_calculation=true;
+  // get i_dim dimension value of i_vec vector
+  virtual float getVecValue(int i_vec,int i_dim) {return 0;};
 };
 
-template <typename M> float OracleL2<M>::operator()(int i, int j) const {
-  const typename M::value_type *first1 = m[i];
-  const typename M::value_type *first2 = m[j];
-  float r = 0.0;
-  for (int i = 0; i < m.getDim(); ++i) {
-    float v = first1[i] - first2[i];
-    r += v * v;
-  }
-  return sqrt(r);
-}
-
-class OracleA {
+struct nnGraph;
+class GraphDistance : public Distance {
   // const M &m;
 public:
-  const int N;
-  OracleA(const int N_) : N(N_) {}
+  float **dm;
+  nnGraph *graph;
+  DataSet *data;
+  int ncodes;
+  // GraphDistance(nnGraph *graph_) : graph(graph_) { N = graph->size; }
+  GraphDistance(nnGraph *graph_, DataSet *data_, int ncodes);
+  ~GraphDistance();
   // float operator()(int i, int j) const __attribute__((noinline));
   float operator()(int i, int j) const;
 };
 
-float OracleA::operator()(int i, int j) const {
-  return i * j;
-  // const typename M::value_type *first1 = m[i];
-  // const typename M::value_type *first2 = m[j];
-  // float r = 0.0;
-  // for (int i = 0; i < m.getDim(); ++i) {
-  // float v = first1[i] - first2[i];
-  // r += v * v;
-  // }
-  // return sqrt(r);
-}
-
-struct nnGraph;
-class L2df {
+class L2df : public Distance {
   // const M &m;
 public:
-  int size;
-  nnGraph *graph;
+  // int size;
+  // nnGraph *graph;
   DataSet *data;
   // GraphDistance(nnGraph *graph_) : graph(graph_) { N = graph->size; }
   // GraphDistance(DataSet *data_);
-  L2df(DataSet *data_) : data(data_) { size = data->size; };
+  L2df(DataSet *data_) : data(data_) {
+    size = data->size;
+    dimensionality = data->dimensionality;
+  };
   // float operator()(int i, int j) const __attribute__((noinline));
+  
+  float getVecValue(int i_vec,int i_dim) {return data->data[i_vec][i_dim];};
   float operator()(int i, int j) const;
 };
 
@@ -123,23 +115,6 @@ float L2df::operator()(int i, int j) const {
   }
   return sqrt(dist);
 }
-
-struct nnGraph;
-class GraphDistance {
-  // const M &m;
-public:
-  int size;
-  float **dm;
-  nnGraph *graph;
-  DataSet *data;
-  int ncodes;
-  // GraphDistance(nnGraph *graph_) : graph(graph_) { N = graph->size; }
-  GraphDistance(nnGraph *graph_, DataSet *data_, int ncodes);
-  ~GraphDistance();
-  // float operator()(int i, int j) const __attribute__((noinline));
-  float operator()(int i, int j) const;
-
-};
 
 // float GraphDistance::operator()(int a, int b) const {
 // // sd->bigrams[a]
