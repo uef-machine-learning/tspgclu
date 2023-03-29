@@ -33,9 +33,7 @@ nnGraph *init_nnGraph(int numNodes) {
     g->nodes[i].visited = -1;
     g->nodes[i].maxNeighbors = maxNeighbors;
 
-    g->nodes[i].neighbors = initLinkedList();
-    // std::set<int> odd = { 1, 3, 5 };
-    // g->nodes[i].nset = new std::set<int>;
+    // g->nodes[i].neighbors = initLinkedList();
     g->nodes[i].nset = new std::set<gItem *, custom_compare>;
     g->nodes[i].nearesth = new giHeap();
 
@@ -45,6 +43,22 @@ nnGraph *init_nnGraph(int numNodes) {
   }
   g->size = numNodes;
   return g;
+}
+
+void dealloc_nnGraph(nnGraph *g) {
+  // nnGraph *g = (nnGraph *)malloc(sizeof(nnGraph));
+  // g->nodes = (gNode *)malloc(sizeof(gNode) * numNodes);
+
+  for (int i = 0; i < g->size; i++) {
+    for (auto gi : *(g->nodes[i].nset)) {
+      free(gi);
+    }
+    delete g->nodes[i].stash;
+    delete g->nodes[i].nearesth;
+    delete g->nodes[i].nset;
+  }
+  free(g->nodes);
+  free(g);
 }
 
 gItem *nng_add_mutual_neighbor2(nnGraph *g, int p1, int p2, float dist) {
@@ -165,13 +179,12 @@ int nng_has_neighbor(nnGraph *g, int p1, int p2) {
   return ret;
 }
 
-
-gItem* nng_get_neighbor(nnGraph *g, int p1, int p2) {
+gItem *nng_get_neighbor(nnGraph *g, int p1, int p2) {
 
   gItem *gi = (gItem *)malloc(sizeof(gItem));
   gi->id = p2;
   auto it = g->nodes[p1].nset->find(gi);
-  gItem* ret = NULL;
+  gItem *ret = NULL;
   if (it != g->nodes[p1].nset->end()) {
     ret = *it;
   }
@@ -202,8 +215,8 @@ gItem *nng_get_neighbor2(nnGraph *g, int p1, int idx) {
 }
 
 // int nng_get_neighbor(nnGraph *g, int p1, int idx) {
-  // gItem *gi = (gItem *)ll_get_item(g->nodes[p1].neighbors, idx);
-  // return gi->id;
+// gItem *gi = (gItem *)ll_get_item(g->nodes[p1].neighbors, idx);
+// return gi->id;
 // }
 
 int nng_num_neighbors(nnGraph *g, int p1) { return g->nodes[p1].neighbors->size; }
@@ -348,7 +361,7 @@ void test_nn_graph() {
   printf("n=%d\n", nng_num_neighbors(g, 0));
   fflush(stdout);
   for (int i = 0; i < nng_num_neighbors(g, 0); i++) {
-    printf(" %d", nng_get_neighbor(g, 0, i));
+    // printf(" %d", nng_get_neighbor(g, 0, i));
   }
 
   printf(" | ");
@@ -372,8 +385,8 @@ nnGraph *read_ascii_graphf2(const char *fname, int clist, std::map<std::string, 
   std::string delim = " ";
   std::ifstream infile(fname);
   DataSet *sd = (DataSet *)malloc(sizeof(DataSet));
-  sd->strings = new vector<string>;
-  sd->type = T_SET; // String data
+  // sd->strings = new vector<string>;
+  // sd->type = T_SET; // String data
   int numLines = 0;
   int numItems = 0;
   int buf[1000000];
@@ -386,17 +399,18 @@ nnGraph *read_ascii_graphf2(const char *fname, int clist, std::map<std::string, 
   std::stringstream ss(line);
   std::string item;
   int id = -1;
-  sd->size = 0;
+  // sd->size = 0;
+  int numlines=0;
   while (std::getline(infile, line)) {
-    sd->size++;
+    numlines++;
   }
   infile.clear();
   infile.seekg(0, ios::beg);
-  printf("Num lines: %d\n", sd->size);
-  int N = sd->size - 1;
+  printf("Num lines: %d\n", numlines);
+  int N = numlines - 1;
 
-  sd->bigrams = (int **)malloc(sizeof(int *) * sd->size);
-  sd->setSize = (int *)malloc(sizeof(int) * sd->size);
+  // sd->bigrams = (int **)malloc(sizeof(int *) * sd->size);
+  // sd->setSize = (int *)malloc(sizeof(int) * sd->size);
 
   // while (std::getline(infile, line)) {
   int show_sets = 1;
@@ -478,14 +492,14 @@ nnGraph *read_ascii_graphf2(const char *fname, int clist, std::map<std::string, 
       }
     }
   }
-  
-    // printf("##F43:%d\n",(*cdmap)[string("F43")]);
-    printf("#Z#F43:%d\n",(*code_to_id)[string("F43")]);
+
+  // printf("##F43:%d\n",(*cdmap)[string("F43")]);
+  printf("#Z#F43:%d\n", (*code_to_id)[string("F43")]);
   if (cdmap != NULL) {
     // cdmap = &code_to_id;
     // cdmap = code_to_id;
     *cdmap = code_to_id;
   }
-    // printf("##F43:%d\n",(**cdmap)[string("F43")]);
+  // printf("##F43:%d\n",(**cdmap)[string("F43")]);
   return graph;
 }

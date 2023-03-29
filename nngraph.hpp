@@ -20,12 +20,13 @@ struct gItem {
   double cost;
   int visited;
   gItem *pair;
-  std::_Rb_tree_const_iterator<gItem*> iterO;
-  int heapp; // Pointer to heap position 
+  std::_Rb_tree_const_iterator<gItem *> iterO;
+  int heapp; // Pointer to heap position
 };
 
 class giHeap : public Heap {
 public:
+
   int compare(void *_a, void *_b) {
     // printf("comp\n");
 
@@ -70,13 +71,9 @@ public:
   }
 };
 
-
-
 struct custom_compare final {
   bool operator()(gItem *a, gItem *b) const { return a->id < b->id; }
 };
-
-
 
 typedef struct gNode {
   // List of <size> number of nearest neighbors
@@ -100,7 +97,7 @@ typedef struct gNode {
 
   int heap_index;
   float *mean;
-  
+
   float internalSum;
 
   // std::set<gItem *> *nset;
@@ -125,7 +122,21 @@ typedef struct nnGraph {
   DataSet *data;
 } nnGraph;
 
-
-gItem* nng_get_neighbor(nnGraph *g, int p1, int p2); 
+nnGraph *init_nnGraph(int numNodes);
+void dealloc_nnGraph(nnGraph *g);
+gItem *nng_add_mutual_neighbor2(nnGraph *g, int p1, int p2, float dist);
+void nng_add_neighbor(nnGraph *g, int p1, int p2, float dist);
+void nng_add_mutual_neighbor(nnGraph *g, int p1, int p2, float dist);
+void nng_remove_neighbor(nnGraph *g, int p1, int p2);
+int nng_has_neighbor(nnGraph *g, int p1, int p2);
+gItem *nng_get_neighbor(nnGraph *g, int p1, int p2);
+gItem *nng_get_neighbor2(nnGraph *g, int p1, int idx);
+int nng_num_neighbors(nnGraph *g, int p1);
+void write_nngraph_to_file(nnGraph *g, const char *fn);
+void write_nngraph_to_file_old(nnGraph *g, const char *fn);
+gItem *find_greedy_path(DataSet *data, nnGraph *g, int source, int target);
+gItem *find_greedy_path2(DataSet *data, nnGraph *g, int source, int target);
+void test_nn_graph();
+nnGraph *read_ascii_graphf2(const char *fname, int clist, std::map<std::string, int> **cdmap);
 
 #endif

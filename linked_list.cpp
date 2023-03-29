@@ -15,13 +15,13 @@ linkedList *initLinkedList() {
   return ll;
 }
 
-
 void ll_free_list(linkedList *ll) {
   int i;
   linkedListNode *node = ll->root;
   linkedListNode *last = node;
   for (i = 0; i < ll->size; i++) {
     node = node->next;
+    free(last->content);
     free(last);
     last = node;
   }

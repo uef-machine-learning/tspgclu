@@ -48,7 +48,7 @@ public:
     part = clusterTSPg(g, numclu, centroids);
     t.tuck("end");
 
-    printf("a=%f\n", a);
+    dealloc_nnGraph(g);
     return part;
   }
 
@@ -207,6 +207,7 @@ template <typename ORACLE> nnGraph *TSPclu<ORACLE>::createTSPg(nnGraph *g) {
     }
     total_dist_sum += total_dist;
     printf("I=%d total_dist=%f\n", i_iter, total_dist);
+    ll_free_list(ll);
   }
   printf("\nmean_tsp_length=%f\n", total_dist_sum / (i_iter + 1));
   // graph_stat(g);
@@ -403,9 +404,9 @@ int *TSPclu<ORACLE>::clusterTSPg(nnGraph *g, int k, vector<vector<float>> *centr
   int pold = 0;
   for (i = 0; num_clu > k; i++) {
     g->cur_iter = i;
-    int pdone = (100*(g->size - num_clu))/(g->size);
+    int pdone = (100 * (g->size - num_clu)) / (g->size);
     if (pdone > pold) {
-      printf("progress:%d%% time=%f\n",pdone,g_timer.get_time());
+      printf("progress:%d%% time=%f\n", pdone, g_timer.get_time());
     }
     pold = pdone;
 
@@ -476,6 +477,7 @@ int *TSPclu<ORACLE>::clusterTSPg(nnGraph *g, int k, vector<vector<float>> *centr
   printf("FINAL=1 time=%f ", g_timer.get_time());
   graph_stat(g);
   printf("\n");
+  delete H;
 
   return partition;
 }
@@ -698,6 +700,7 @@ void TSPclu<ORACLE>::nngMergeNodes(nnGraph *g, nodeHeap *H, int p1, int p2) {
     // Remove p2 from neighbors of p2
     auto posn = g->nodes[gi->id].nset->find(gi->pair);
     g->nodes[gi->id].nset->erase(posn);
+    // free(gi->pair);
 
     // g->nodes[gi->id].nset->erase(gi->iterO); //TODO??
 
@@ -779,6 +782,10 @@ void TSPclu<ORACLE>::nngMergeNodes(nnGraph *g, nodeHeap *H, int p1, int p2) {
   debug_assert(H->isHeap());
   nngUpdateNearest(g, p1);
 
+  for (auto gi : *(g->nodes[p2].nset)) {
+    free(gi->pair);
+    free(gi);
+  }
   g->nodes[p2].stash->clear();
   g->nodes[p2].nset->clear();
   p2node->outdated = 1;

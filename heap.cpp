@@ -26,7 +26,7 @@ public:
   void init(int _allocatedsize);
   // void free();
   Heap();
-  ~Heap();
+  virtual ~Heap();
   void update(int target);
   void *remove(int heapindex);
   void insert(void *elem, int *index);

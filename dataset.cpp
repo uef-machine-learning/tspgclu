@@ -1,9 +1,16 @@
 
 #include "dataset.hpp"
 
+GraphDistance::~GraphDistance() {
+  for (int i = 0; i < ncodes; ++i) {
+    delete[] dm[i];
+  }
+  delete[] dm;
+}
+
 // GraphDistance::GraphDistance(nnGraph *graph_) : graph(graph_) { N = graph->size; }
-GraphDistance::GraphDistance(nnGraph *graph_, DataSet *data_, int ncodes)
-    : graph(graph_), data(data_) {
+GraphDistance::GraphDistance(nnGraph *graph_, DataSet *data_, int _ncodes)
+    : graph(graph_), data(data_), ncodes(_ncodes) {
   size = data->size;
 
   dm = new float *[ncodes];
@@ -327,10 +334,19 @@ DataSet *init_DataSet(int size, int dimensionality) {
 void free_DataSet(DataSet *DS) {
 
   for (int i = 0; i < DS->size; i++) {
-    if (DS->type == 1) { // Numerical
+    if (DS->type == T_NUMERICAL) {
       free(DS->data[i]);
     }
+    if (DS->type == T_SET) {
+      free(DS->bigrams[i]);
+    }
   }
+
+  if (DS->type == T_SET) {
+    free(DS->setSize);
+    free(DS->bigrams);
+  }
+
   free(DS->data);
   free(DS);
 }
@@ -390,7 +406,7 @@ float L05dist(float *p1_idx, float *p2_idx, int D) {
   // TODO: sqrt?
 
   return dist;
-  /*return sqrt(dist);*/
+  /*return sqrt(dist);*/ // TODO
 }
 
 // L1 distance
