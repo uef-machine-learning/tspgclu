@@ -44,28 +44,33 @@ void print_stat() {
   printf("STAT num_calc_clu_dist=%d num_pruned=%d\n", g_stat.num_calc_clu_dist, g_stat.num_pruned);
 }
 
-#include "constants.h"
-#include "options.h"
+#include "tspg_lib.hpp"
 
-#include "heap.cpp"
+// using namespace tspg;
+// #include "constants.h"
+// #include "options.h"
 
-#include "timer.hpp"
-#include "util.hpp"
-#include "globals.h"
-#include "linked_list.hpp"
-#include "dataset.hpp"
-#include "nngraph.hpp"
-#include "knngraph.hpp"
-#include "agg_clu.hpp"
+// #include "heap.cpp"
 
-#include "util.cpp"
-#include "dataset.cpp"
-#include "knngraph.cpp"
-#include "nngraph.cpp"
-#include "linked_list.cpp"
-#include "options.cpp"
-#include "agg_clu.cpp"
-#include "tspg_clu.cpp"
+// #include "timer.hpp"
+// #include "util.hpp"
+// #include "globals.h"
+// #include "linked_list.hpp"
+// #include "dataset.hpp"
+// #include "distance.hpp"
+// #include "nngraph.hpp"
+// #include "knngraph.hpp"
+// #include "agg_clu.hpp"
+
+// #include "util.cpp"
+// #include "dataset.cpp"
+// #include "distance.cpp"
+// #include "knngraph.cpp"
+// #include "nngraph.cpp"
+// #include "linked_list.cpp"
+// #include "options.cpp"
+// #include "agg_clu.cpp"
+// #include "tspg_clu.cpp"
 
 kNNGraph *g_ground_truth;
 #include "recall.h"
@@ -149,7 +154,8 @@ int main(int argc, char *argv[]) {
   float start_nndes = 0.1; // For RP-div knng algorithm
   int output_write_header = 0;
   DataSet *data = NULL;
-  int data_type = T_NUMERICAL;
+  // int data_type = T_NUMERICAL;
+  tspg::datatype dtyp = tspg::NUMERICAL;
   kNNGraph *kNN;
 
   g_options.costf = 5;
@@ -196,9 +202,9 @@ int main(int argc, char *argv[]) {
       distfunc = arg_str0(NULL, "dfunc", "<FUNC>",
                           "Distance function:\n"
                           "     l2 = euclidean distance (vectorial, default)\n"
-                          "     mnkw = Minkowski distance (vectorial)\n"
-                          "     lev = Levenshtein distance (for strings, default)\n"
-                          "     dice = Dice coefficient / bigrams (for strings)\n"),
+                          // "     mnkw = Minkowski distance (vectorial)\n" TODO
+                          "     lev = Levenshtein distance (for strings, default)\n"),
+      // "     dice = Dice coefficient / bigrams (for strings)\n"),
 
       a_gtype = arg_str0(NULL, "gtype", "<type>", "Graph type: {rpdiv (default), compl (slow)}"),
       algo = arg_str0(NULL, "algo", "<name>",
@@ -213,6 +219,7 @@ int main(int argc, char *argv[]) {
       infn = arg_filen(NULL, NULL, "<file>", 1, 1, "input files"),
 
       a_graphfn = arg_filen(NULL, "graphfn", "<file>", 0, 1, "graph used for distance calculation"),
+      a_meanc = arg_litn(NULL, "meanc", 0, 1, "Use mean vector calculation for numerical data"),
 
 #ifdef EXPERIMENTAL
       mapfn = arg_filen(NULL, "mapfn", "<file>", 0, 1, "file for one-dimensional mappings"),
@@ -224,7 +231,6 @@ int main(int argc, char *argv[]) {
       numNeighbors = arg_intn("k", "num_neighbors", "<n>", 0, 1, "number of neighbors"),
       maxIterations = arg_intn("I", "maxIter", "<STOP>", 0, 1, "Iterations > STOP "),
       stopDelta = arg_dbln(NULL, "delta", "<STOP>", 0, 1, "Stop when delta < STOP "),
-      a_meanc = arg_litn(NULL, "meanc", 0, 1, "Use mean vector calculation for numerical data"),
       a_riter = arg_intn("r", "riter", "<n>", 0, 1, "Number of refine iterations"),
 
       a_minn = arg_intn(NULL, "minn", "<n>", 0, 1, "Minimum number of neighbors in graph"),
@@ -304,11 +310,11 @@ int main(int argc, char *argv[]) {
   }
 
   if (dtype->count > 0 && strcmp(dtype->sval[0], "txt") == 0) {
-    data_type = T_STRING;
+    dtyp = tspg::STRING;
   } else if (dtype->count > 0 && strcmp(dtype->sval[0], "vec") == 0) {
-    data_type = T_NUMERICAL;
+    dtyp = tspg::NUMERICAL;
   } else if (dtype->count > 0 && strcmp(dtype->sval[0], "set") == 0) {
-    data_type = T_SET;
+    dtyp = tspg::SET;
   } else {
     printf("Must specify data type: vec|txt|set\n");
     ok = 0;
@@ -326,18 +332,14 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
-  if (data_type == T_NUMERICAL) {
-    data = read_ascii_dataset(infn->filename[0]);
-  } else if (data_type == T_STRING) {
-    data = loadStringData(infn->filename[0]);
-    g_options.mean_calculation = 0;
-  } else if (data_type == T_SET) {
-    data = loadSetData(infn->filename[0]);
-    g_options.mean_calculation = 0;
-  } else {
-    terminal_error("Incorrect data type\n");
-  }
-  printf("data->type %d\n", data->type);
+  // TODO:
+  // if (data_type == T_SET) {
+  // data = loadSetData(infn->filename[0]);
+  // g_options.mean_calculation = 0;
+  // } else {
+  // terminal_error("Incorrect data type\n");
+  // }
+  // printf("data->type %d\n", data->type);
 
   g_options.num_tsp = 1;
   if (a_numtsp->count > 0) {
@@ -359,10 +361,6 @@ int main(int argc, char *argv[]) {
 
   if (outf->count > 0 && strcmp(outf->sval[0], "txt") == 0) {
     printf("Output format:txt\n");
-  }
-
-  if (a_meanc->count > 0) {
-    g_options.mean_calculation = 1;
   }
 
   if (maxIterations->count > 0) {
@@ -416,34 +414,67 @@ int main(int argc, char *argv[]) {
     g_options.num_threads = 1;
   }
 
-  if (gtfn->count > 0) {
-    printf("Loading ground truth file: %s\n", gtfn->filename[0]);
-    g_ground_truth = load_kNN_ivec(gtfn->filename[0], RANDOM_SAMPLED_BRUTEFORCE);
-    recalc_dist(g_ground_truth, data);
-  }
   g_options.recall_K = K;
 #endif
+  tspg::Distance *dfun = nullptr;
 
-  if (distfunc->count > 0) {
-    if (strcmp(distfunc->sval[0], "l2") == 0) {
-      printf("Distance function: %s\n", distfunc->sval[0]);
-      g_options.distance_type = DIST_L2;
-    } else if (strcmp(distfunc->sval[0], "mnkw") == 0) {
-      g_options.distance_type = DIST_MINKW;
-      printf("Distance function: minkowski (p=%f)\n", g_options.minkowski_p);
-    } else if (strcmp(distfunc->sval[0], "cos") == 0) {
-      printf("Distance function: Cosine\n");
-      g_options.distance_type = DIST_COS;
-    } else if (strcmp(distfunc->sval[0], "lev") == 0) {
-      printf("Distance function: Levenshtein\n");
-      g_options.distance_type = DIST_LEV;
-    } else if (strcmp(distfunc->sval[0], "dice") == 0) {
-      g_options.distance_type = DIST_DICE;
-      printf("Distance function: Dice\n");
-    } else {
-      terminal_error("Unknown distance function\n");
+  // if (data_type == T_NUMERICAL) {
+  if (dtyp == tspg::NUMERICAL) {
+    data = read_ascii_dataset(infn->filename[0]);
+
+    if (a_meanc->count > 0) {
+      g_options.mean_calculation = 1;
+    }
+
+    // Default distance function L2
+    dfun = dynamic_cast<tspg::Distance *>(new tspg::L2df(data));
+
+    if (distfunc->count > 0) {
+      if (strcmp(distfunc->sval[0], "l2") == 0) {
+        printf("Distance function: %s\n", distfunc->sval[0]);
+        g_options.mean_calculation = 1;
+      } else if (strcmp(distfunc->sval[0], "l1") == 0) {
+        printf("Distance function: %s\n", distfunc->sval[0]);
+        dfun = dynamic_cast<tspg::Distance *>(new tspg::L1df(data));
+      }
     }
   }
+
+  if (dtyp == tspg::STRING) {
+
+    data = loadStringData(infn->filename[0]);
+    g_options.mean_calculation = 0;
+
+    if (distfunc->count > 0) {
+      dfun = dynamic_cast<tspg::Distance *>(new tspg::EditDistance(data));
+      if (strcmp(distfunc->sval[0], "lev") == 0) {
+        printf("Distance function: Levenshtein\n");
+      } else {
+        terminal_error("Unknown distance function\n");
+      }
+    }
+  }
+
+  // if (distfunc->count > 0) {
+
+  // else if (strcmp(distfunc->sval[0], "lev") == 0) {
+
+  // TODO:
+  // else if (strcmp(distfunc->sval[0], "mnkw") == 0) {
+  // g_options.distance_type = DIST_MINKW;
+  // printf("Distance function: minkowski (p=%f)\n", g_options.minkowski_p);
+  // } else if (strcmp(distfunc->sval[0], "cos") == 0) {
+  // printf("Distance function: Cosine\n");
+  // g_options.distance_type = DIST_COS;
+  // } else if (strcmp(distfunc->sval[0], "dice") == 0) {
+  // g_options.distance_type = DIST_DICE;
+  // printf("Distance function: Dice\n");
+  // }
+
+  // else {
+  // terminal_error("Unknown distance function\n");
+  // }
+  // }
 
   printf("numtsp=%d costf=%d samples=%d distance_type=%d infn='%s'\n", g_options.num_tsp,
          g_options.costf, g_options.num_samples, g_options.distance_type, infn->filename[0]);
@@ -452,6 +483,7 @@ int main(int argc, char *argv[]) {
   g_timer.tick();
 
   nnGraph *graph = NULL;
+  // Using graph based distance function
   if (a_graphfn->count >= 1) {
     // int seed = time(NULL);
     int seed = 1677674001;
@@ -461,46 +493,36 @@ int main(int argc, char *argv[]) {
     std::map<std::string, int> *cdmap;
     graph = read_ascii_graphf2(a_graphfn->filename[0], 1, &cdmap);
     // printf("#2#F43:%d\n", (*cdmap)[string("F43")]);
-    int N = 10;
     g_timer.tick();
     data = loadSetDataWithMapping(infn->filename[0], cdmap);
-    GraphDistance* graphd = new GraphDistance(graph, data, cdmap->size());
+    tspg::GraphDistance *graphd = new tspg::GraphDistance(graph, data, cdmap->size());
     printf("graphd size: %d\n", graphd->size);
-    
-    // TSPclu<GraphDistance> tspgclu(numClusters /*K=clusters*/, g_options.num_tsp /*num_tsp*/, graphd,false /*mean calculation*/);
-    
-    TSPclu<Distance> tspgclu(numClusters /*K=clusters*/, g_options.num_tsp /*num_tsp*/, 
-    dynamic_cast<Distance*>(graphd),false /*mean calculation*/);
-    
-    
+
+    TSPclu<tspg::Distance> tspgclu(numClusters /*K=clusters*/, g_options.num_tsp /*num_tsp*/,
+                                   dynamic_cast<tspg::Distance *>(graphd),
+                                   false /*mean calculation*/);
+
     int *part = tspgclu.runClustering();
     dealloc_nnGraph(graph);
     if (outfn->count > 0) {
       write_output_pa(part, data->size, outfn, numClusters, 1);
     }
-    
+
     delete cdmap;
 
     return 0;
   }
-   
-     // Cluster using the TSP-graph
+
+  // Cluster using the TSP-graph
   if (algo->count > 0 && strcmp(algo->sval[0], "tspgclu") == 0) {
     printf("Algorithm: TSPg-clu\n");
 
     nnGraph *nng = init_nnGraph(data->size);
-    
-    L2df* dfun = new L2df(data);
-    printf("defun size: %d\n", dfun->size);
-    
-    TSPclu<Distance> tspgclu(numClusters /*K=clusters*/, g_options.num_tsp /*num_tsp*/, 
-    dynamic_cast<Distance*>(dfun),true /*mean calculation*/);
 
-    if (g_options.gtype == RPDIV) {
-      nng = create_tspg(data, nng, g_options.num_tsp, &ll);
-    } else if (g_options.gtype == COMPL) {
-      nng = create_complete_graph(data, nng);
-    }
+    printf("dfun size: %d\n", dfun->size);
+
+    TSPclu<tspg::Distance> tspgclu(numClusters /*K=clusters*/, g_options.num_tsp /*num_tsp*/, dfun,
+                                   g_options.mean_calculation);
 
     printf("nng stat ");
     graph_stat(nng);
@@ -512,13 +534,13 @@ int main(int argc, char *argv[]) {
       centroids = new vector<vector<float>>(numClusters, vector<float>(data->dimensionality, 0));
     }
     //
-    
-    //TODO: return centroids
+
+    // TODO: return centroids
     // int *part = cluster_tspg(data, nng, numClusters, centroids);
     int *part = tspgclu.runClustering();
 
     // if (g_options.mean_calculation && a_centroidfn->count >= 1) {
-      // write_flt_vec2_to_file(a_centroidfn->filename[0], centroids);
+    // write_flt_vec2_to_file(a_centroidfn->filename[0], centroids);
     // }
 
     if (outfn->count > 0) {
@@ -526,8 +548,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-return 0 ;
-   
+  return 0;
 
   // Create the TSP-graph
   if (algo->count > 0 && strcmp(algo->sval[0], "tspg") == 0) {
@@ -542,38 +563,5 @@ return 0 ;
     return 0;
   }
 
-  // Cluster using the TSP-graph
-  if (algo->count > 0 && strcmp(algo->sval[0], "tspgclu") == 0) {
-    printf("Algorithm: TSPg-clu\n");
-
-    nnGraph *nng = init_nnGraph(data->size);
-
-    if (g_options.gtype == RPDIV) {
-
-      nng = create_tspg(data, nng, g_options.num_tsp, &ll);
-    } else if (g_options.gtype == COMPL) {
-      nng = create_complete_graph(data, nng);
-    }
-
-    printf("nng stat ");
-    graph_stat(nng);
-    printf("\n");
-
-    vector<vector<float>> *centroids;
-    centroids = NULL;
-    if (g_options.mean_calculation) {
-      centroids = new vector<vector<float>>(numClusters, vector<float>(data->dimensionality, 0));
-    }
-    //
-    int *part = cluster_tspg(data, nng, numClusters, centroids);
-
-    if (g_options.mean_calculation && a_centroidfn->count >= 1) {
-      write_flt_vec2_to_file(a_centroidfn->filename[0], centroids);
-    }
-
-    if (outfn->count > 0) {
-      write_output_pa(part, data->size, outfn, numClusters, output_write_header);
-    }
-  }
   return 0;
 }

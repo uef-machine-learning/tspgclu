@@ -53,69 +53,6 @@ struct DataSet {
 };
 
 
-class Distance {
-public:
-  virtual float operator()(int i, int j) const { return 0; };
-  Distance(){};
-  int size;
-  int dimensionality;
-  
-  // Need to implement if mean_calculation=true;
-  // get i_dim dimension value of i_vec vector
-  virtual float getVecValue(int i_vec,int i_dim) {return 0;};
-};
-
-struct nnGraph;
-class GraphDistance : public Distance {
-  // const M &m;
-public:
-  float **dm;
-  nnGraph *graph;
-  DataSet *data;
-  int ncodes;
-  // GraphDistance(nnGraph *graph_) : graph(graph_) { N = graph->size; }
-  GraphDistance(nnGraph *graph_, DataSet *data_, int ncodes);
-  ~GraphDistance();
-  // float operator()(int i, int j) const __attribute__((noinline));
-  float operator()(int i, int j) const;
-};
-
-class L2df : public Distance {
-  // const M &m;
-public:
-  // int size;
-  // nnGraph *graph;
-  DataSet *data;
-  // GraphDistance(nnGraph *graph_) : graph(graph_) { N = graph->size; }
-  // GraphDistance(DataSet *data_);
-  L2df(DataSet *data_) : data(data_) {
-    size = data->size;
-    dimensionality = data->dimensionality;
-  };
-  // float operator()(int i, int j) const __attribute__((noinline));
-  
-  float getVecValue(int i_vec,int i_dim) {return data->data[i_vec][i_dim];};
-  float operator()(int i, int j) const;
-};
-
-float L2df::operator()(int i, int j) const {
-
-  // float L2dist(float *p1_idx, float *p2_idx, int D) {
-
-  float *p1_idx = data->data[i];
-  float *p2_idx = data->data[j];
-  // (float *)*(DS->data + idx)
-  float tmp = 0;
-  float dist = 0;
-  for (int i = 0; i < data->dimensionality; i++) {
-    tmp = *p1_idx - *p2_idx;
-    dist += tmp * tmp;
-    p1_idx++;
-    p2_idx++;
-  }
-  return sqrt(dist);
-}
-
 // float GraphDistance::operator()(int a, int b) const {
 // // sd->bigrams[a]
 // // sd->setSize[a]

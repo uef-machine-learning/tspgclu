@@ -1,3 +1,8 @@
+
+namespace tspg {
+enum datatype { NUMERICAL = 1, STRING=2, CUSTOMDF=3, SET=4 };
+}
+
 #define D_L2 0 
 #define D_L1 1 
 #define D_COS 2 
