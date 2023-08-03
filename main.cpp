@@ -533,10 +533,8 @@ int main(int argc, char *argv[]) {
     if (g_options.mean_calculation) {
       centroids = new vector<vector<float>>(numClusters, vector<float>(data->dimensionality, 0));
     }
-    //
 
     // TODO: return centroids
-    // int *part = cluster_tspg(data, nng, numClusters, centroids);
     int *part = tspgclu.runClustering();
 
     // if (g_options.mean_calculation && a_centroidfn->count >= 1) {

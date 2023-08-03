@@ -583,7 +583,8 @@ template <typename ORACLE> float TSPclu<ORACLE>::calcCluDist(nnGraph *g, int p1,
 template <typename ORACLE> void TSPclu<ORACLE>::nngUpdateNearest(nnGraph *g, int p1) {
   gNode *p1node = &(g->nodes[p1]);
   p1node->nearest_id = 0;
-  p1node->nearest_dist = FLT_MAX;
+  p1node->nearest_dist = std::numeric_limits<float>::max();
+  
   for (auto gi : *(p1node->nset)) {
     // printf("p1=%d gi=%d dist=%f\n", p1, gi->id, gi->dist);
     if (gi->cost < p1node->nearest_dist) {
@@ -597,8 +598,6 @@ template <typename ORACLE> void TSPclu<ORACLE>::nngUpdateNearest(nnGraph *g, int
 
 template <typename ORACLE> int TSPclu<ORACLE>::nngCheckNearest(nnGraph *g, int p1) {
   gNode *p1node = &(g->nodes[p1]);
-  // p1node->nearest_id = 0;
-  // p1node->nearest_dist = FLT_MAX;
   int changed = 0;
   for (auto gi : *(p1node->nset)) {
     // printf("p1=%d gi=%d dist=%f p1node->nearest_id=%d\n", p1, gi->id, gi->dist,
@@ -757,8 +756,6 @@ void TSPclu<ORACLE>::nngMergeNodes(nnGraph *g, nodeHeap *H, int p1, int p2) {
   }
 
   debug_assert(H->isHeap());
-  // p1node->nearest_id = 0;
-  // p1node->nearest_dist = FLT_MAX;
   // Loop all neighbors of new merged node.
   for (auto gi : *(g->nodes[p1].nset)) {
 

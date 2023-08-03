@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import numpy
 
 from distutils.core import setup, Extension
 
@@ -8,6 +9,8 @@ cargs = ['-O3',  '-std=c++11', '-fopenmp', '-fpermissive', '-D_PYTHON_LIB','-Wun
 
 
 module1 = Extension('tspg', sources=['python/py_interf.cpp'], include_dirs=['python','.'], extra_compile_args=cargs)
+                        # pyximport.install(setup_args={"script_args":["--compiler=mingw32"],
+                              # },
                         
 setup(name = 'tspg',
         version='1.0',
@@ -16,7 +19,7 @@ setup(name = 'tspg',
         requires=['numpy'],
         install_requires=["numpy>=1.9"],
         provides=['tspg'],
-       
+        include_dirs=[numpy.get_include()],
         description='Fast agglomerative clustering using TSP-graph',
         ext_modules = [module1])
 

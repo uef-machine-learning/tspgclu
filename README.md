@@ -13,15 +13,28 @@ Please, let me know how the software works for you if you try it out.
 
 # Python interface
 
+
+## Install requirements:
+```
+pip install --upgrade setuptools
+pip install numpy
+pip install wheel
+pip install matplotlib
+pip install rapidfuzz
+```
+
 ## Compile
 ```
+git clone -b dev 'https://github.com/uef-machine-learning/tspgclu.git'
+cd tspgclu
 rm build/**/**/*
 rm build/**/*
+rm dist/*whl
 pip uninstall tspg 
 python3 ./setup.py build_ext --inplace
-python setup.py sdist
-python setup.py bdist_wheel 
-pip install dist/tspg-1.0-cp38-cp38-linux_x86_64.whl
+python3 setup.py sdist
+python3 setup.py bdist_wheel 
+pip install dist/tspg-*.whl
 ```
 
 ## Examples

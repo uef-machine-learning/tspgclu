@@ -10,7 +10,7 @@ kNNGraph *init_kNNGraph(int N, int K, int maxK) {
   for (int i = 0; i < N; i++) {
     curlist->items = (kNNItem *)safemalloc(sizeof(kNNItem) * maxK);
     curlist->size = 0;
-    curlist->max_dist = FLT_MAX;
+    curlist->max_dist = std::numeric_limits<float>::max();
     curlist->is_exact = false;
     curlist->id = (int)i;
     curlist++;
