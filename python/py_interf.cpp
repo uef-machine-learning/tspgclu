@@ -1,4 +1,5 @@
 
+
 #include <Python.h>
 #include <math.h>
 #include <numpy/arrayobject.h>
@@ -236,7 +237,7 @@ static PyMethodDef FastDPMethods[] = {
 #define v_shape(i) (py_v->dimensions[(i)])
 
 /* This initiates the module using the above definitions. */
-#if PY_VERSION_HEX >= 0x03000000
+// #if PY_VERSION_HEX >= 0x03000000
 static struct PyModuleDef moduledef = {
     PyModuleDef_HEAD_INIT, "tspg", NULL, -1, FastDPMethods, NULL, NULL, NULL, NULL};
 
@@ -248,16 +249,16 @@ PyMODINIT_FUNC PyInit_tspg(void) {
   }
   return m;
 }
-#else
-PyMODINIT_FUNC inittspg(void) {
-  PyObject *m;
+// #else
+// PyMODINIT_FUNC inittspg(void) {
+  // PyObject *m;
 
-  m = Py_InitModule("tspg", FastDPMethods);
-  if (m == NULL) {
-    return;
-  }
-}
-#endif
+  // m = Py_InitModule("tspg", FastDPMethods);
+  // if (m == NULL) {
+    // return;
+  // }
+// }
+// #endif
 
 static PyObject *tspg_py(PyObject *self, PyObject *args, PyObject *kwargs) {
   import_array();
