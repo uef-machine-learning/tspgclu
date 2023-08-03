@@ -1,0 +1,7 @@
+rapidfuzz
+setuptools
+numpy
+wheel
+matplotlib
+rapidfuzz
+

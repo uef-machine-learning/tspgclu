@@ -74,7 +74,6 @@ def example_generic(x,numclu):
 	show_clusters_2d(x,labels,numclu)
 	
 
-
 # Takes around 113 seconds for a 2D dataset size 100k:
 # x=np.loadtxt('data/b2.txt')
 # example_generic(x,100)
@@ -96,11 +95,10 @@ def example_generic_strings(x,numclu):
 			print(x[j],end=" ")
 		print("")
 		
-	
-# infn = "data/birkbeckU.txt"
-# f = open(infn, "r")
-# x = f.read().splitlines()
-# example_generic_strings(x,50)
+infn = "data/birkbeckU.txt"
+f = open(infn, "r")
+x = f.read().splitlines()
+example_generic_strings(x,50)
 
 
 
