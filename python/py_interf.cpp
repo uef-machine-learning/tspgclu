@@ -225,10 +225,10 @@ static PyObject *tspg_py(PyObject *self, PyObject *args, PyObject *kwargs);
 static PyObject *tspg_generic_py(PyObject *self, PyObject *args, PyObject *kwargs);
 
 // Define python accessible methods
-static PyMethodDef FastDPMethods[] = {
-    {"tspg", tspg_py, METH_VARARGS | METH_KEYWORDS, "Cluster using fast density peaks."},
+static PyMethodDef TSPgCluMethods[] = {
+    {"tspg", tspg_py, METH_VARARGS | METH_KEYWORDS, "Cluster using TSP-graph & Ward's method."},
     {"tspg_generic", tspg_generic_py, METH_VARARGS | METH_KEYWORDS,
-     "Cluster using fast density peaks, using python provided distance function."},
+    "Cluster using TSP-graph & Ward's method, using python provided distance function."},   
     {NULL, NULL, 0, NULL}};
 
 #define v(x0, x1)                                                                                  \
@@ -239,7 +239,7 @@ static PyMethodDef FastDPMethods[] = {
 /* This initiates the module using the above definitions. */
 // #if PY_VERSION_HEX >= 0x03000000
 static struct PyModuleDef moduledef = {
-    PyModuleDef_HEAD_INIT, "tspg", NULL, -1, FastDPMethods, NULL, NULL, NULL, NULL};
+    PyModuleDef_HEAD_INIT, "tspg", NULL, -1, TSPgCluMethods, NULL, NULL, NULL, NULL};
 
 PyMODINIT_FUNC PyInit_tspg(void) {
   PyObject *m;
@@ -249,16 +249,6 @@ PyMODINIT_FUNC PyInit_tspg(void) {
   }
   return m;
 }
-// #else
-// PyMODINIT_FUNC inittspg(void) {
-  // PyObject *m;
-
-  // m = Py_InitModule("tspg", FastDPMethods);
-  // if (m == NULL) {
-    // return;
-  // }
-// }
-// #endif
 
 static PyObject *tspg_py(PyObject *self, PyObject *args, PyObject *kwargs) {
   import_array();
@@ -300,9 +290,6 @@ static PyObject *tspg_py(PyObject *self, PyObject *args, PyObject *kwargs) {
   printf("tspg_py 0000\n");
 
   ret = py_TSPgClu(py_v, num_clusters, num_tsp, dfunc);
-  // py_TSPgClu
-  // ret = py_densityPeaks(py_v, num_clusters, num_neighbors, window, maxiter, endcond, nndes_start,
-  // dfunc);
 
   return ret;
 }

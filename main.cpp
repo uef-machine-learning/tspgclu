@@ -268,10 +268,10 @@ int main(int argc, char *argv[]) {
   srand(seed);
   printf("RNG seed: %d\n", seed);
 
-  if (numNeighbors->count > 0) {
-    K = numNeighbors->ival[0];
-  }
-  W = 2.5 * K;
+  // if (numNeighbors->count > 0) {
+    // K = numNeighbors->ival[0];
+  // }
+  // W = 2.5 * K;
 
   if (a_numClusters->count > 0) {
     numClusters = a_numClusters->ival[0];
@@ -416,6 +416,7 @@ int main(int argc, char *argv[]) {
 
   if (dtyp == tspg::STRING) {
 
+    printf("STRING data\n");
     data = loadStringData(infn->filename[0]);
     g_options.mean_calculation = 0;
 

@@ -15,7 +15,7 @@ Please, let me know how the software works for you if you try it out.
 
 ## Install & test
 ```
-git clone -b dev https://github.com/uef-machine-learning/tspgclu.git
+git clone https://github.com/uef-machine-learning/tspgclu.git
 cd tspgclu
 pip install -r requirements.txt
 pip install .
@@ -39,4 +39,10 @@ make
 Cluster vectorial (numerical) S1 dataset (data/s1.txt) to 15 clusters:
 ```
 ./tspg data/s1.txt --type vec -T 10  -C 15 --algo tspgclu -o tmp/s1part.txt  --cfn tmp/centroids.txt
+```
+
+### For string data
+```
+./tspg  data/birkbeckU.txt --type txt -T 10 -C 20 --algo tspgclu --dfun lev -o tmp/birkbeckU_part.txt -H
+./show_text_clusters.rb data/birkbeckU.txt tmp/birkbeckU_part.txt > tmp/text_clu.html
 ```
