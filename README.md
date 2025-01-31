@@ -3,7 +3,7 @@
 
 The TSPg software implements the following algorithm that approximates Ward's agglomerative clustering:
 
-S. Sieranoja, and P. Fränti, "Tsp-Graph for Agglomerative Clustering", https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4328176
+Sieranoja, S., Fränti, P. Fast agglomerative clustering using approximate traveling salesman solutions. Journal of Big Data 12, 21 (2025). https://doi.org/10.1186/s40537-024-01053-x
 
 The software is provided with GNU Lesser General Public License, Version 3. https://www.gnu.org/licenses/lgpl.html. All files except those under data and contrib -folders are subject to this license. See LICENSE.txt.
 
