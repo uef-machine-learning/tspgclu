@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import tspg
 x=np.loadtxt('data/s1_small.txt')
 
+
 # the graph is reprecented as num_tsp different linear orderings between the data points
 paths = tspg.create_graph(x,distance="l2",num_tsp=4)
 
