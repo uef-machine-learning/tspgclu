@@ -32,7 +32,6 @@ void print_stat() {
   printf("STAT num_calc_clu_dist=%d num_pruned=%d\n", g_stat.num_calc_clu_dist, g_stat.num_pruned);
 }
 
-
 #include "constants.h"
 #include "options.h"
 
@@ -78,8 +77,8 @@ float *g_distance(int a, int b) { distance(g_data, a, b); }
 using namespace std;
 
 #define v(x0, x1)                                                                                  \
-  (*(npy_float64 *)((PyArray_DATA(py_v) + (x0)*PyArray_STRIDES(py_v)[0] +                          \
-                     (x1)*PyArray_STRIDES(py_v)[1])))
+  (*(npy_float64 *)((PyArray_DATA(py_v) + (x0) * PyArray_STRIDES(py_v)[0] +                        \
+                     (x1) * PyArray_STRIDES(py_v)[1])))
 #define v_shape(i) (py_v->dimensions[(i)])
 
 // extern "C" {
@@ -92,6 +91,27 @@ PyObject *array_to_py(int *arr, int N) {
     PyList_SetItem(pyarr, i, Py_BuildValue("i", arr[i]));
   }
   return pyarr;
+}
+
+DataSet *pyToDataset(PyArrayObject *py_v) {
+
+  int N = py_v->dimensions[0];
+  int D = py_v->dimensions[1];
+  DataSet *data = init_DataSet(N, D);
+
+  // printf("V %f %f\n", v(0, 0), v(0, 1));
+  for (int i = 0; i < N; i++) {
+    for (int j = 0; j < D; j++) {
+      set_val(data, i, j, v(i, j));
+      if (i < 10) {
+        // printf(" %f", v(i, j));
+      }
+    }
+    if (i < 10) {
+      // printf("\n");
+    }
+  }
+  return data;
 }
 
 PyObject *py_TSPgClu(PyArrayObject *py_v, int num_clusters, int num_tsp, int dfunc) {
@@ -158,7 +178,7 @@ PyObject *py_TSPgClu(PyArrayObject *py_v, int num_clusters, int num_tsp, int dfu
   // ret = PyList_New(2);
   // PyList_SetItem(ret, 0, py_labels);
   // return ret;
-  
+
   return py_labels;
 }
 
@@ -168,7 +188,6 @@ PyObject *py_TSPgCluGeneric(PyObject *py_v, int num_clusters, int num_tsp) {
   PyObject *py_labels;
   // Start counting time
   g_timer.tick();
-
 
   int *labels;
 
@@ -213,7 +232,7 @@ PyObject *py_TSPgCluGeneric(PyObject *py_v, int num_clusters, int num_tsp) {
   // py_labels = array_to_py((int *)arr2, 3);
   // ret = PyList_New(2);
   // PyList_SetItem(ret, 0, py_labels);
-  
+
   py_labels = array_to_py(part, N);
 
   return py_labels;
@@ -223,17 +242,19 @@ extern "C" {
 
 static PyObject *tspg_py(PyObject *self, PyObject *args, PyObject *kwargs);
 static PyObject *tspg_generic_py(PyObject *self, PyObject *args, PyObject *kwargs);
+static PyObject *tspg_create_graph_py(PyObject *self, PyObject *args, PyObject *kwargs);
 
 // Define python accessible methods
 static PyMethodDef TSPgCluMethods[] = {
     {"tspg", tspg_py, METH_VARARGS | METH_KEYWORDS, "Cluster using TSP-graph & Ward's method."},
+    {"create_graph", tspg_create_graph_py, METH_VARARGS | METH_KEYWORDS, "Create a TSP graph"},
     {"tspg_generic", tspg_generic_py, METH_VARARGS | METH_KEYWORDS,
-    "Cluster using TSP-graph & Ward's method, using python provided distance function."},   
+     "Cluster using TSP-graph & Ward's method, using python provided distance function."},
     {NULL, NULL, 0, NULL}};
 
 #define v(x0, x1)                                                                                  \
-  (*(npy_float64 *)((PyArray_DATA(py_v) + (x0)*PyArray_STRIDES(py_v)[0] +                          \
-                     (x1)*PyArray_STRIDES(py_v)[1])))
+  (*(npy_float64 *)((PyArray_DATA(py_v) + (x0) * PyArray_STRIDES(py_v)[0] +                        \
+                     (x1) * PyArray_STRIDES(py_v)[1])))
 #define v_shape(i) (py_v->dimensions[(i)])
 
 /* This initiates the module using the above definitions. */
@@ -250,11 +271,71 @@ PyMODINIT_FUNC PyInit_tspg(void) {
   return m;
 }
 
+static PyObject *tspg_create_graph_py(PyObject *self, PyObject *args, PyObject *kwargs) {
+  import_array();
+  PyArrayObject *py_v;
+  int num_tsp = 10;
+  char *type = NULL;
+  char *distance = NULL;
+
+  PyObject *ret;
+  static char *kwlist[] = {"v", "num_tsp", "dtype", "distance", NULL};
+
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!|iss", kwlist, &PyArray_Type, &py_v, &num_tsp,
+                                   &type, &distance)) {
+    return NULL;
+  }
+
+  if (num_tsp <= 0) {
+    PyErr_SetString(PyExc_ValueError, "num_tsp <= 0 ");
+  }
+
+  printf("v %f %f\n", v(0, 0), v(0, 1));
+
+  int dtype = D_L2;
+  if (distance != NULL) {
+    if (strcmp("l2", distance) == 0) {
+      dtype = D_L2;
+    } else if (strcmp("l1", distance) == 0) {
+      dtype = D_L1;
+    } else if (strcmp("cos", distance) == 0) {
+      dtype = D_COS;
+    } else {
+      PyErr_SetString(PyExc_ValueError, "Distance must be one for {l2(default),l1,cos}");
+      return NULL;
+    }
+  }
+
+  printf("tspg_create_graph_py\n");
+
+
+  PyObject *col = PyList_New(num_tsp);
+  DataSet *data = pyToDataset(py_v);
+  g_options.distance_type = data->distance_type = dtype;
+
+  int *ind_arr = (int *)safemalloc(sizeof(int) * data->size);
+  int *ind_arr2 = (int *)safemalloc(sizeof(int) * data->size);
+
+  for (int i = 0; i < num_tsp; i++) {
+    for (int i_data = 0; i_data < data->size; i_data++) {
+      ind_arr[i_data] = i_data;
+    }
+    rpdiv_queue(data, ind_arr, ind_arr2);
+
+    PyObject *arr1 = array_to_py(ind_arr, data->size);
+    PyList_SetItem(col, i, arr1);
+  }
+
+  free(ind_arr);
+  free(ind_arr2);
+
+  return col;
+}
+
 static PyObject *tspg_py(PyObject *self, PyObject *args, PyObject *kwargs) {
   import_array();
   PyArrayObject *py_v;
   int num_neighbors = 10, num_clusters = 10, num_tsp = 10, maxiter = 100;
-  float nndes_start = 0.0, endcond = 0.05;
   char *type = NULL;
   char *distance = NULL;
   int dfunc = D_L2;
@@ -305,8 +386,7 @@ static PyObject *tspg_generic_py(PyObject *self, PyObject *args, PyObject *kwarg
   PyObject *ret;
   static char *kwlist[] = {"v", "num_clusters", "num_tsp", NULL};
 
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "Oi|i", kwlist, &py_v, &num_clusters,
-                                   &num_tsp)) {
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "Oi|i", kwlist, &py_v, &num_clusters, &num_tsp)) {
     return NULL;
   }
 
