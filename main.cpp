@@ -12,7 +12,6 @@
  * If not, see <http://www.gnu.org/licenses/lgpl.html>.
  *******************************************************************************/
 #include <stdio.h>
-#include <pthread.h>
 #include "contrib/argtable3.h"
 #include <sys/mman.h> // mmap, munmap
 

@@ -6,7 +6,6 @@
 #include <stdio.h>
 
 #include <stdio.h>
-#include <pthread.h>
 #include "contrib/argtable3.h"
 #include <sys/mman.h> // mmap, munmap
 

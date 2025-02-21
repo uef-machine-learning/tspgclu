@@ -8,7 +8,7 @@ CXXFLAGS +=  -O3 $(ARCHFLAGS)  -Wall -I.  -std=c++11
 DEBUGFLAGS +=  -O0 $(ARCHFLAGS)  -Wall -I.  -std=c++11 -g -DDEBUG
 # DEBUGFLAGS +=  -fsanitize=undefined -fno-sanitize-recover=all -fsanitize=float-divide-by-zero -fsanitize=float-cast-overflow -fno-sanitize=null -fno-sanitize=alignment
  
-LIBS = -lpthread
+
 
 CFLAGS = -O3
 
@@ -25,13 +25,13 @@ argtable3.o:
 	$(CC) -c $(CFLAGS) contrib/argtable3.c
 
 tspg: $(DEPS) $(OBJS)
-	$(GPP) $(CXXFLAGS) $(DISABLEWARN) main.cpp $(LIBS) $(OBJS) -o tspg
+	$(GPP) $(CXXFLAGS) $(DISABLEWARN) main.cpp  $(OBJS) -o tspg
 
 tspg_debug: $(DEPS) $(OBJS)
-	$(GPP) $(DEBUGFLAGS) $(DISABLEWARN) main.cpp $(LIBS) $(OBJS) -o tspg_debug
+	$(GPP) $(DEBUGFLAGS) $(DISABLEWARN) main.cpp  $(OBJS) -o tspg_debug
 	
 tspg_debug2: $(DEPS) $(OBJS)
-	$(GPP) $(DEBUGFLAGS) $(DISABLEWARN) main.cpp $(LIBS) $(OBJS) -o tspg_debug2
+	$(GPP) $(DEBUGFLAGS) $(DISABLEWARN) main.cpp  $(OBJS) -o tspg_debug2
 
 
 clean:
