@@ -135,6 +135,26 @@ void write_flt_vec2_to_file(const char *fn, vector<vector<float>> *vec2) {
   fclose(fp);
 }
 
+void write_int_vec2_to_file(const char *fn, vector<vector<int>> *vec2) {
+  int i;
+  FILE *fp;
+  fp = fopen(fn, "w");
+
+  vector<vector<int>>::iterator row;
+  vector<int>::iterator col;
+  for (row = (*vec2).begin(); row != (*vec2).end(); row++) {
+    for (col = row->begin(); col != row->end(); col++) {
+      if (col != row->begin()) {
+        fprintf(fp, " ");
+      }
+      fprintf(fp, "%d", (*col));
+    }
+    fprintf(fp, "\n");
+  }
+  fclose(fp);
+}
+
+
 
 void write_dbl_vec2_to_file(const char *fn, vector<vector<double>> *vec2) {
   int i;

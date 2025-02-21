@@ -268,7 +268,7 @@ int main(int argc, char *argv[]) {
   printf("RNG seed: %d\n", seed);
 
   // if (numNeighbors->count > 0) {
-    // K = numNeighbors->ival[0];
+  // K = numNeighbors->ival[0];
   // }
   // W = 2.5 * K;
 
@@ -304,15 +304,6 @@ int main(int argc, char *argv[]) {
     arg_print_glossary(stdout, argtable, "  %-25s %s\n");
     return 0;
   }
-
-  // TODO:
-  // if (data_type == T_SET) {
-  // data = loadSetData(infn->filename[0]);
-  // g_options.mean_calculation = 0;
-  // } else {
-  // terminal_error("Incorrect data type\n");
-  // }
-  // printf("data->type %d\n", data->type);
 
   g_options.num_tsp = 1;
   if (a_numtsp->count > 0) {
@@ -389,12 +380,15 @@ int main(int argc, char *argv[]) {
 
   g_options.recall_K = K;
 #endif
+
   tspg::Distance *dfun = nullptr;
 
-  // if (data_type == T_NUMERICAL) {
   if (dtyp == tspg::NUMERICAL) {
     data = read_ascii_dataset(infn->filename[0]);
 
+    g_options.mean_calculation = 1;
+    
+    //TODO: use always? ability to disable?
     if (a_meanc->count > 0) {
       g_options.mean_calculation = 1;
     }
@@ -456,51 +450,15 @@ int main(int argc, char *argv[]) {
   // Start counting time
   g_timer.tick();
 
-  nnGraph *graph = NULL;
-  // Using graph based distance function
-  if (a_graphfn->count >= 1) {
-    // int seed = time(NULL);
-    int seed = 1677674001;
-    srand(seed);
-    printf("RNGg seed: %d\n", seed);
-
-    std::map<std::string, int> *cdmap;
-    graph = read_ascii_graphf2(a_graphfn->filename[0], 1, &cdmap);
-    // printf("#2#F43:%d\n", (*cdmap)[string("F43")]);
-    g_timer.tick();
-    data = loadSetDataWithMapping(infn->filename[0], cdmap);
-    tspg::GraphDistance *graphd = new tspg::GraphDistance(graph, data, cdmap->size());
-    printf("graphd size: %d\n", graphd->size);
-
-    TSPclu<tspg::Distance> tspgclu(numClusters /*K=clusters*/, g_options.num_tsp /*num_tsp*/,
-                                   dynamic_cast<tspg::Distance *>(graphd),
-                                   false /*mean calculation*/);
-
-    int *part = tspgclu.runClustering();
-    dealloc_nnGraph(graph);
-    if (outfn->count > 0) {
-      write_output_pa(part, data->size, outfn, numClusters, 1);
-    }
-
-    delete cdmap;
-
-    return 0;
-  }
-
   // Cluster using the TSP-graph
   if (algo->count > 0 && strcmp(algo->sval[0], "tspgclu") == 0) {
     printf("Algorithm: TSPg-clu\n");
 
-    nnGraph *nng = init_nnGraph(data->size);
-
-    printf("dfun size: %d\n", dfun->size);
+    printf("dfun size: %d mean calc:%d\n", dfun->size, g_options.mean_calculation);
 
     TSPclu<tspg::Distance> tspgclu(numClusters /*K=clusters*/, g_options.num_tsp /*num_tsp*/, dfun,
                                    g_options.mean_calculation);
 
-    printf("nng stat ");
-    graph_stat(nng);
-    printf("\n");
 
     vector<vector<float>> *centroids;
     centroids = NULL;
@@ -511,28 +469,26 @@ int main(int argc, char *argv[]) {
     // TODO: return centroids
     int *part = tspgclu.runClustering();
 
-    // if (g_options.mean_calculation && a_centroidfn->count >= 1) {
-    // write_flt_vec2_to_file(a_centroidfn->filename[0], centroids);
-    // }
+
+  	  printf("mean calc %d centrod:%d  \n", g_options.mean_calculation, a_centroidfn->count);
+    if (g_options.mean_calculation && a_centroidfn->count >= 1) {
+    	  printf("Write centroids\n");
+    	  printf("a %f %f\n",tspgclu.cent[0][0],tspgclu.cent[0][1]);
+    
+      write_flt_vec2_to_file(a_centroidfn->filename[0], &(tspgclu.cent));
+    }
+    
+    // if ( a_centroidfn->count >= 1) {
+    if ( 1) {
+    	  printf("Write Merge Order\n");
+      write_flt_vec2_to_file(a_centroidfn->filename[0], &(tspgclu.mergeOrder));
+    }
+   
+    
 
     if (outfn->count > 0) {
       write_output_pa(part, data->size, outfn, numClusters, output_write_header);
     }
-  }
-
-  return 0;
-
-  // Create the TSP-graph
-  if (algo->count > 0 && strcmp(algo->sval[0], "tspg") == 0) {
-    printf("Algorithm: TSPg\n");
-    nnGraph *g = init_nnGraph(data->size);
-    // nnGraph *nng = create_tspg(data, g, K, W, delta, start_nndes, g_options.num_tsp, &ll);
-    nnGraph *nng = create_tspg(data, g, g_options.num_tsp, &ll);
-    if (outfn->count > 0) {
-      printf("Writing output to file: %s\n", outfn->filename[0]);
-      write_nngraph_to_file(nng, outfn->filename[0]);
-    }
-    return 0;
   }
 
   return 0;

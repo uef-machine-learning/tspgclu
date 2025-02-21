@@ -5,42 +5,16 @@ private:
   int num_tsp;
   // const ORACLE &oracle;
   ORACLE *oracle;
-  bool mean_calculation;
-
-  // double minkowski_p;
-  // int costf; // Cost function
-  // int distance_type;
-  // int gtype;
-  // int max_neighbors;
-  // int min_neighbors;
-  // int neighbor_dist_estimation;
-  // int nndes_K;
-  // int num_samples;
-  // int num_threads;
-  // int num_tsp;
-  // int prune_strategy;
-  // int recall_K;
-  // int refine_graph;
-  // int refine_iter;
-  // int scale_method;
-  // int time_limit;
-  // int uncle_adjustment;
-  // int verbose;
 
   int size;
 
-  // int update(int p1, int p2) {
-
-  // float dist = (*oracle)(p1, p2);
-  // return 1;
-  // }
-
 public:
-  // const vector<KNN> &getNN() const { return nn; }
+  vector<vector<float>> mergeOrder;
+  vector<vector<float>> cent;
 
-  // long long int getCost() const { return cost; }
+  bool mean_calculation;
 
-  TSPclu(int K_, int num_tsp_, ORACLE *oracle_, int mean_calculation_)
+  TSPclu(int K_, int num_tsp_, ORACLE *oracle_, bool mean_calculation_)
       : numclu(K_), num_tsp(num_tsp_), oracle(oracle_), mean_calculation(mean_calculation_) {
     size = oracle->size;
 
@@ -60,6 +34,7 @@ public:
     int *part;
 
     vector<vector<float>> *centroids;
+
     centroids = NULL;
     if (mean_calculation) {
       // TODO:
@@ -67,9 +42,13 @@ public:
       centroids = new vector<vector<float>>(numclu, vector<float>(oracle->dimensionality, 0));
     }
 
-    g_options.mean_calculation = 0;
     part = clusterTSPg(g, numclu, centroids);
     t.tuck("end");
+
+    for (const auto &merge : mergeOrder) {
+      // std::cout << merge[0] << " " << merge[1];
+      // std::cout << std::endl;
+    }
 
     dealloc_nnGraph(g);
     return part;
@@ -79,45 +58,13 @@ public:
   void rpdiv(int *ind_arr, int *ind_arr2);
   void rpdivRecurseQueue(linkedList *qu, queueItem *qi);
   int *clusterTSPg(nnGraph *g, int k, vector<vector<float>> *centroids);
+  // int *clusterTSPg(nnGraph *g, int k, vector<vector<float>> *centroids,
+  // vector<vector<float>> *mergeOrder);
   float calcCluDist(nnGraph *g, int p1, int p2);
   void nngUpdateNearest(nnGraph *g, int p1);
   int nngCheckNearest(nnGraph *g, int p1);
   void calcCost(nnGraph *g, gItem *gi);
   void nngMergeNodes(nnGraph *g, nodeHeap *H, int p1, int p2);
-
-  // void runDistTest() {
-  // float a;
-  // Timer t;
-  // t.tick();
-  // for (int i = 0; i < 1e9; i++) {
-  // a += (*oracle)(i, i / 2);
-  // }
-  // t.tuck("end");
-  // printf("a=%f\n", a);
-  // }
-
-  // void runDistTest2() {
-  // float a;
-  // Timer t;
-  // t.tick();
-  // for (int i = 0; i < 1e9; i++) {
-  // // a += i * (i/2) - 3.2;
-  // a += dist33(i,i/2);
-  // }
-  // t.tuck("end");
-  // printf("a=%f\n", a);
-  // }
-
-  // void runDistTestFref(float (*fun_ptr)(int,int)) {
-  // float a;
-  // Timer t;
-  // t.tick();
-  // for (int i = 0; i < 1e9; i++) {
-  // a += (*fun_ptr)(i, i / 2);
-  // }
-  // t.tuck("end");
-  // printf("b=%f\n", a);
-  // }
 };
 
 // Random point division for TSP solution
@@ -400,9 +347,7 @@ template <typename ORACLE> void TSPclu<ORACLE>::rpdivRecurseQueue(linkedList *qu
 
 template <typename ORACLE>
 int *TSPclu<ORACLE>::clusterTSPg(nnGraph *g, int k, vector<vector<float>> *centroids) {
-  printf("Clustering using tspg graph\n");
-  // g->data = data;
-  // g->data = oracle->data;
+  // printf("Clustering using tspg graph\n");
   gNode *node;
   int rvar = 0;
   int *partition = (int *)malloc(sizeof(int) * g->size);
@@ -448,8 +393,9 @@ int *TSPclu<ORACLE>::clusterTSPg(nnGraph *g, int k, vector<vector<float>> *centr
     debug_assert(nngCheckNearest(g, node->id) == 0);
 
     if (g_options.verbose > 1) {
-      printf("i=%d num_clu=%d MERGE p1=%d p2=%d nset_size=%ld stash_size=%ld", i, num_clu, node->id,
-             node->nearest_id, node->nset->size(), node->stash->size());
+      printf("i=%d num_clu=%d MERGE p1=%d p2=%d dist=%f nset_size=%ld stash_size=%ld", i, num_clu,
+             node->id, node->nearest_id, node->nearest_dist, node->nset->size(),
+             node->stash->size());
 
       float nsum = 0.0;
       for (int i = 0; i < num_clu; i++) {
@@ -459,6 +405,7 @@ int *TSPclu<ORACLE>::clusterTSPg(nnGraph *g, int k, vector<vector<float>> *centr
       printf(" mean_neighb=%f", nsum / num_clu);
       printf("\n");
     }
+    int newstash = node->stash->size() + g->nodes[node->nearest_id].stash->size();
 
     assert(node->outdated != 1);
     assert(node->id != node->nearest->id);
@@ -466,6 +413,7 @@ int *TSPclu<ORACLE>::clusterTSPg(nnGraph *g, int k, vector<vector<float>> *centr
     assert(node->nearest->id < g->size && node->nearest->id >= 0);
     assert(node->nearest_id == node->nearest->id);
 
+    mergeOrder.emplace_back(std::vector<float>{node->id, node->nearest_id, node->nearest_dist, newstash});
     nngMergeNodes(g, H, node->id, node->nearest_id);
 
     num_clu--;
@@ -489,11 +437,16 @@ int *TSPclu<ORACLE>::clusterTSPg(nnGraph *g, int k, vector<vector<float>> *centr
     }
     // TODO:
     if (mean_calculation) {
+
+      vector<float> v1;
       for (int i_dim = 0; i_dim < oracle->dimensionality; i_dim++) {
-        // printf("%f ", node->mean[i_dim]);
-        (*centroids)[cluid - 1][i_dim] = node->mean[i_dim];
+        v1.push_back(node->mean[i_dim]);
+        printf("x (%f %f) ", node->mean[i_dim], v1[0]);
+        // (*centroids)[cluid - 1][i_dim] = node->mean[i_dim];
       }
+      cent.push_back(v1);
     }
+    // printf("cent  ", v1[0]);
     cluid++;
   }
 
@@ -505,31 +458,19 @@ int *TSPclu<ORACLE>::clusterTSPg(nnGraph *g, int k, vector<vector<float>> *centr
   return partition;
 }
 
-// #ifdef DISABLED
-
-// int grand() { return rand(); }
-
+// Calculate distance between clusters p1 and p2
 template <typename ORACLE> float TSPclu<ORACLE>::calcCluDist(nnGraph *g, int p1, int p2) {
 
   int numsample = g_options.num_samples;
-  // int numsample = 50;
   int size1 = g->nodes[p1].stash->size();
   int size2 = g->nodes[p2].stash->size();
   float d;
   float d2;
   float _dist = 0.0;
 
-  // g_stat.num_calcCluDist++; //TODO: enable
-
-  // if (g->data->type == T_NUMERICAL && g_options.mean_calculation) {
   if (mean_calculation) {
-    // d2 = L2dist(g->nodes[p1].mean, g->nodes[p2].mean, g->data->dimensionality);
     d2 = L2dist(g->nodes[p1].mean, g->nodes[p2].mean, oracle->dimensionality);
 
-    // printf("d = %f, ", d);
-    // printf("m = %f %f %f %f ",
-    // g->nodes[p1].mean[0],g->nodes[p2].mean[0],g->nodes[p1].mean[g->data->dimensionality-1],g->nodes[p2].mean[g->data->dimensionality-1]
-    // ); printf("\n");
     float Sa = g->nodes[p1].internalSum;
     float Sb = g->nodes[p2].internalSum;
     float Na = size1;
@@ -573,10 +514,6 @@ template <typename ORACLE> float TSPclu<ORACLE>::calcCluDist(nnGraph *g, int p1,
     d = _dist;
   }
 
-  // float p = 0.8;
-  // if(d/d2 < 1-p || d/d2 > 1+p) {
-  // printf("d=%f d2=%f\n",d,d2);
-
   return d;
 }
 
@@ -584,7 +521,7 @@ template <typename ORACLE> void TSPclu<ORACLE>::nngUpdateNearest(nnGraph *g, int
   gNode *p1node = &(g->nodes[p1]);
   p1node->nearest_id = 0;
   p1node->nearest_dist = std::numeric_limits<float>::max();
-  
+
   for (auto gi : *(p1node->nset)) {
     // printf("p1=%d gi=%d dist=%f\n", p1, gi->id, gi->dist);
     if (gi->cost < p1node->nearest_dist) {
