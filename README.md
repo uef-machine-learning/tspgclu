@@ -23,7 +23,68 @@ python/api_example.py
 ```
 
 ## Examples
-For more examples, see python/api_example.py
+See ex_* files in directory python/
+
+### Ward's agglomerative clustering using the TSP graph
+(see file [python/ex_cluster.py](/python/ex_cluster.py))
+
+
+```py
+#!/usr/bin/env python
+import numpy as np
+import matplotlib.pyplot as plt
+
+import tspg
+
+def show_clusters_2d(x,labels,numclu):
+	colormap = plt.cm.gist_ncar
+	colorst = [colormap(i) for i in np.linspace(0, 0.9,numclu)]
+	u_labels = np.unique(labels)
+	for i in u_labels:
+		plt.scatter(x[labels == i , 0] , x[labels == i , 1] , label = i, color = colorst[i-1])
+	plt.show()
+
+# Fast version using built in distance functions written in C:
+def example_vec(ds,numclu):
+	# For higher quality:
+	#  - increase number of tsp paths (num_tsp), (in range [2,100])
+	labels,mergeOrder = tspg.tspg(ds,numclu,distance="l2",num_tsp=5,dtype="vec")
+	show_clusters_2d(ds,labels,numclu)
+
+x=np.loadtxt('data/s1.txt')
+example_vec(x,15)
+```
+
+![clustering results](https://raw.githubusercontent.com/uef-machine-learning/tspgclu/refs/heads/main/img/tspg_clu01.png)
+
+### Showing the dendogram
+
+See [python/ex_dendogram.py](/python/ex_dendogram.py)
+
+```py
+...
+ds = np.genfromtxt('data/s1_small.txt')
+labels,mergeOrder = tspg.tspg(ds,1,distance="l2",num_tsp=5,dtype="vec")
+
+mergeOrder_scipy = mergeOrderToScipyFormat(mergeOrder)
+
+fig, axs = plt.subplots(1, 2, figsize=(12, 6), gridspec_kw={'width_ratios': [1, 1]})
+
+plt1 = axs[0]; plt2 = axs[1]
+
+# Create 2d plot showing the  merges
+plt1.scatter(ds[:, 0], ds[:, 1], marker='o', color='b')
+for pair in mergeOrder:
+	plt1.plot([ds[pair[0],0], ds[pair[1],0]] , [ds[pair[0],1], ds[pair[1],1]], 'k-')
+plt1.set_title('Merge Order')
+
+# Plot the dendrogram
+dendrogram(mergeOrder_scipy,ax=plt2,no_labels=True)
+plt2.set_title('Hierarchical Clustering Dendrogram')
+plt.show()
+```
+
+![dendogram](https://raw.githubusercontent.com/uef-machine-learning/tspgclu/refs/heads/dev/img/dendogram.png)
 
 ### Getting the TSP graph
 (file python/ex_create_graph.py)
@@ -52,36 +113,7 @@ plt.show()
 
 
 
-### Ward's agglomerative clustering using the TSP graph
-(file python/ex_cluster.py)
 
-```py
-#!/usr/bin/env python
-import numpy as np
-import matplotlib.pyplot as plt
-
-import tspg
-
-def show_clusters_2d(x,labels,numclu):
-	colormap = plt.cm.gist_ncar
-	colorst = [colormap(i) for i in np.linspace(0, 0.9,numclu)]
-	u_labels = np.unique(labels)
-	for i in u_labels:
-		plt.scatter(x[labels == i , 0] , x[labels == i , 1] , label = i, color = colorst[i-1])
-	plt.show()
-
-# Fast version using built in distance functions written in C:
-def example_vec(ds,numclu):
-	# For higher quality:
-	#  - increase number of tsp paths (num_tsp), (in range [2,100])
-	labels = tspg.tspg(ds,numclu,distance="l2",num_tsp=5,dtype="vec")
-	show_clusters_2d(ds,labels,numclu)
-
-x=np.loadtxt('data/s1.txt')
-example_vec(x,15)
-```
-
-![clustering results](https://raw.githubusercontent.com/uef-machine-learning/tspgclu/refs/heads/main/img/tspg_clu01.png)
 
 # Commandline interface
 ## Compile

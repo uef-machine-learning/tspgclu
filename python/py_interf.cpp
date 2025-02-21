@@ -136,6 +136,7 @@ PyObject *py_TSPgCluster(PyArrayObject *py_v, int num_clusters, int num_tsp, int
   PyObject *py_labels;
   PyObject *py_peaks;
   printf("py_TSPgClu\n");
+  g_timer.tick();
 
   double *delta;
   int *nearestHighDens;

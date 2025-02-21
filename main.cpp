@@ -466,11 +466,8 @@ int main(int argc, char *argv[]) {
       centroids = new vector<vector<float>>(numClusters, vector<float>(data->dimensionality, 0));
     }
 
-    // TODO: return centroids
     int *part = tspgclu.runClustering();
 
-
-  	  printf("mean calc %d centrod:%d  \n", g_options.mean_calculation, a_centroidfn->count);
     if (g_options.mean_calculation && a_centroidfn->count >= 1) {
     	  printf("Write centroids\n");
     	  printf("a %f %f\n",tspgclu.cent[0][0],tspgclu.cent[0][1]);
@@ -478,11 +475,12 @@ int main(int argc, char *argv[]) {
       write_flt_vec2_to_file(a_centroidfn->filename[0], &(tspgclu.cent));
     }
     
+    //TODO: Output merge order
     // if ( a_centroidfn->count >= 1) {
-    if ( 1) {
-    	  printf("Write Merge Order\n");
-      write_flt_vec2_to_file(a_centroidfn->filename[0], &(tspgclu.mergeOrder));
-    }
+    // if ( 1) {
+    	  // printf("Write Merge Order\n");
+      // write_flt_vec2_to_file(a_centroidfn->filename[0], &(tspgclu.mergeOrder));
+    // }
    
     
 
