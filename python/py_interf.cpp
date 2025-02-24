@@ -7,7 +7,6 @@
 
 #include <stdio.h>
 #include "contrib/argtable3.h"
-#include <sys/mman.h> // mmap, munmap
 
 #include <execinfo.h>
 #include <signal.h>
@@ -24,34 +23,6 @@ struct stat2 {
   int num_pruned;
 };
 
-int g_use_heap = 0;
-struct stat2 g_stat;
-
-void print_stat() {
-  printf("STAT num_calc_clu_dist=%d num_pruned=%d\n", g_stat.num_calc_clu_dist, g_stat.num_pruned);
-}
-
-// #include "constants.h"
-// #include "options.h"
-
-// #include "heap.cpp"
-
-// #include "timer.hpp"
-// #include "util.hpp"
-// #include "globals.h"
-// #include "dataset.hpp"
-// #include "linked_list.hpp"
-// #include "nngraph.hpp"
-// #include "knngraph.hpp"
-// #include "agg_clu.hpp"
-
-// #include "util.cpp"
-// #include "dataset.cpp"
-// #include "knngraph.cpp"
-// #include "nngraph.cpp"
-// #include "linked_list.cpp"
-// #include "options.cpp"
-// #include "agg_clu.cpp"
 
 #include "tspg_lib.hpp"
 

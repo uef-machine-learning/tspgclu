@@ -13,10 +13,13 @@
  *******************************************************************************/
 #include <stdio.h>
 #include "contrib/argtable3.h"
-#include <sys/mman.h> // mmap, munmap
 
+
+#ifdef defined(_POSIX_)
 #include <execinfo.h>
 #include <signal.h>
+#endif
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -31,17 +34,13 @@ float __attribute__((noinline)) dist33(int i, int j) { return i * j - 3.2; }
 
 using namespace std;
 
-struct stat {
-  int num_calc_clu_dist;
-  int num_pruned;
-};
+// struct stat {
+  // int num_calc_clu_dist;
+  // int num_pruned;
+// };
 
 int g_use_heap = 0;
-struct stat g_stat;
 
-void print_stat() {
-  printf("STAT num_calc_clu_dist=%d num_pruned=%d\n", g_stat.num_calc_clu_dist, g_stat.num_pruned);
-}
 
 #include "tspg_lib.hpp"
 
@@ -76,12 +75,12 @@ int write_output_pa(int *part, int size, arg_file *outfn, int numClusters,
 
 int main(int argc, char *argv[]) {
 
+#ifdef defined(_POSIX_)
   signal(SIGSEGV, handler);
+#endif
   setbuf(stdout, NULL); // Disable buffering on stdout
 
   double *distmat = NULL;
-
-  g_stat.num_calc_clu_dist = 0;
 
   struct arg_dbl *distpar;
   struct arg_dbl *knng_start_nndes;
@@ -387,8 +386,8 @@ int main(int argc, char *argv[]) {
     data = read_ascii_dataset(infn->filename[0]);
 
     g_options.mean_calculation = 1;
-    
-    //TODO: use always? ability to disable?
+
+    // TODO: use always? ability to disable?
     if (a_meanc->count > 0) {
       g_options.mean_calculation = 1;
     }
@@ -459,7 +458,6 @@ int main(int argc, char *argv[]) {
     TSPclu<tspg::Distance> tspgclu(numClusters /*K=clusters*/, g_options.num_tsp /*num_tsp*/, dfun,
                                    g_options.mean_calculation);
 
-
     vector<vector<float>> *centroids;
     centroids = NULL;
     if (g_options.mean_calculation) {
@@ -469,20 +467,18 @@ int main(int argc, char *argv[]) {
     int *part = tspgclu.runClustering();
 
     if (g_options.mean_calculation && a_centroidfn->count >= 1) {
-    	  printf("Write centroids\n");
-    	  printf("a %f %f\n",tspgclu.cent[0][0],tspgclu.cent[0][1]);
-    
+      printf("Write centroids\n");
+      printf("a %f %f\n", tspgclu.cent[0][0], tspgclu.cent[0][1]);
+
       write_flt_vec2_to_file(a_centroidfn->filename[0], &(tspgclu.cent));
     }
-    
-    //TODO: Output merge order
-    // if ( a_centroidfn->count >= 1) {
-    // if ( 1) {
-    	  // printf("Write Merge Order\n");
-      // write_flt_vec2_to_file(a_centroidfn->filename[0], &(tspgclu.mergeOrder));
+
+    // TODO: Output merge order
+    //  if ( a_centroidfn->count >= 1) {
+    //  if ( 1) {
+    //  printf("Write Merge Order\n");
+    // write_flt_vec2_to_file(a_centroidfn->filename[0], &(tspgclu.mergeOrder));
     // }
-   
-    
 
     if (outfn->count > 0) {
       write_output_pa(part, data->size, outfn, numClusters, output_write_header);

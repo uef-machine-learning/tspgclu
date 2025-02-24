@@ -102,11 +102,6 @@ gItem *nng_add_mutual_neighbor2(nnGraph *g, int p1, int p2, float dist) {
     gi_p1->iterO = iter2.first;
     gi_p2->iterO = iter1.first;
 
-    if (g_use_heap > 0) {
-      g->nodes[p1].nearesth->insert((void *)gi_p1, &(gi_p1->heapp));
-      g->nodes[p2].nearesth->insert((void *)gi_p2, &(gi_p2->heapp));
-    }
-
   } else {
     free(gi_p1);
     free(gi_p2);

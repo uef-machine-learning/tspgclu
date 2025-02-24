@@ -38,6 +38,8 @@ type_name()
 }
 // Usage: std::cout << "decltype(it) is " << type_name<decltype(it)>() << '\n';
 
+
+#ifdef defined(_POSIX_)
 void handler(int sig) {
   void *array[10];
   size_t size;
@@ -50,6 +52,7 @@ void handler(int sig) {
   backtrace_symbols_fd(array, size, STDERR_FILENO);
   exit(1);
 }
+#endif
 
 void __terminal_error(const char *file, const unsigned line, const char *func, const char *msg) {
 

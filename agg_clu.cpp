@@ -208,7 +208,6 @@ void prune_neighbors2(nnGraph *g, int pid) {
         if (g->nodes[rem1].nearest->id != rem2 && g->nodes[rem2].nearest->id != rem1) {
           to_del.emplace_back(rem1, rem2);
           num_pruned++;
-          g_stat.num_pruned++;
           break;
         }
       }
@@ -302,7 +301,6 @@ void prune_neighbors(nnGraph *g, int pid) {
         if (g->nodes[rem1].nearest->id != rem2 && g->nodes[rem2].nearest->id != rem1) {
           to_del.emplace_back(rem1, rem2);
           num_pruned++;
-          g_stat.num_pruned++;
           break;
         }
         // }
