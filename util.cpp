@@ -39,7 +39,7 @@ type_name()
 // Usage: std::cout << "decltype(it) is " << type_name<decltype(it)>() << '\n';
 
 
-#ifdef defined(_POSIX_)
+#ifdef _POSIX_
 void handler(int sig) {
   void *array[10];
   size_t size;

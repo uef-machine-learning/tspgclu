@@ -8,10 +8,14 @@
 #include <stdio.h>
 #include "contrib/argtable3.h"
 
-#include <execinfo.h>
-#include <signal.h>
-#include <stdlib.h>
+
+#ifdef defined(_POSIX_)
+// #include <execinfo.h>
+// #include <signal.h>
 #include <unistd.h>
+#endif
+
+#include <stdlib.h>
 #include <stdio.h>
 #include <iostream>
 #include <vector>
@@ -40,11 +44,7 @@ float *g_distance(int a, int b) { distance(g_data, a, b); }
 #include <float.h>
 #include <math.h>
 #include <numpy/arrayobject.h>
-// #ifdef Py_PYTHON_H
-// #include "rknng_lib.h"
 #include <stdio.h>
-// #include "rknng/rknng_lib.h"
-// #include "dencl/dencl.hpp"
 
 using namespace std;
 
@@ -53,7 +53,6 @@ using namespace std;
                      (x1) * PyArray_STRIDES(py_v)[1])))
 #define v_shape(i) (py_v->dimensions[(i)])
 
-// extern "C" {
 
 PyObject *array_to_py(int *arr, int N) {
   // Convert c array to python format
@@ -86,6 +85,7 @@ DataSet *pyToDataset(PyArrayObject *py_v) {
   int D = py_v->dimensions[1];
   DataSet *data = init_DataSet(N, D);
 
+	float test = v(0, 0);
   // printf("V %f %f\n", v(0, 0), v(0, 1));
   for (int i = 0; i < N; i++) {
     for (int j = 0; j < D; j++) {

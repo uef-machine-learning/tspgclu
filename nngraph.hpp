@@ -14,14 +14,22 @@
 typedef int BOOL;
 
 struct gItem;
+
+
+
 struct gItem {
   int id;
   double dist;
   double cost;
   int visited;
   gItem *pair;
-  std::_Rb_tree_const_iterator<gItem *> iterO;
+  // std::_Rb_tree_const_iterator<gItem *> iterO;
+  std::set<gItem *>::const_iterator iterO;
   int heapp; // Pointer to heap position
+};
+
+struct custom_compare final {
+  bool operator()(gItem *a, gItem *b) const { return a->id < b->id; }
 };
 
 class giHeap : public Heap {
@@ -71,9 +79,7 @@ public:
   }
 };
 
-struct custom_compare final {
-  bool operator()(gItem *a, gItem *b) const { return a->id < b->id; }
-};
+
 
 typedef struct gNode {
   // List of <size> number of nearest neighbors

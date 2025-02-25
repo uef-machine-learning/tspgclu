@@ -2,70 +2,69 @@
 #ifndef _TIMER_HPP
 #define _TIMER_HPP
 
-#include <sys/time.h>
-class Timer
-{
-    struct  timeval start;
-    struct  timeval startpause;
-    double pausecompensate;
+// #include <sys/time.h>
+#include <chrono>
 
-    public:
-    Timer () {}
-    /// Start timing.
-    void tick ()
-    {
-        gettimeofday(&start, 0);
-        pausecompensate=0;
+double getTimeAsDouble() {
+  auto now = std::chrono::system_clock::now();
+  auto duration = now.time_since_epoch();
+  double seconds = std::chrono::duration_cast<std::chrono::duration<double>>(duration).count();
+  return seconds;
+}
+class Timer {
+  // struct timeval start;
+  // struct timeval startpause;
+  double pausecompensate;
+
+  double start;
+  double startpause;
+
+public:
+  Timer() {}
+  /// Start timing.
+  void tick() {
+    // gettimeofday(&start, 0);
+    start = getTimeAsDouble();
+    pausecompensate = 0;
+  }
+  double tuck(const char *msg) const {
+    /*struct timeval end;*/
+    double diff = get_time();
+
+    if (msg != 0) {
+      printf("%s: time=%fs\n", msg, diff);
     }
-    double tuck (const char *msg) const
-    {
-        /*struct timeval end;*/
-        double   diff = get_time();
+    return diff;
+  }
 
-        if (msg != 0) {
-            printf("%s: time=%fs\n",msg,diff);
-        }
-        return diff;
-    }
+  /// Return time in seconds (excluding paused time)
+  double get_time() const {
+    // struct timeval end;
+    double diff;
+    double diff_nopause;
+    // gettimeofday(&end, 0);
 
+    double end = getTimeAsDouble();
 
-    /// Return time in seconds (excluding paused time)
-    double get_time () const
-    {
-        struct timeval end;
-        double   diff;
-        double   diff_nopause;
-        gettimeofday(&end, 0);
+    diff_nopause = end - start;
+    diff = diff_nopause - pausecompensate;
 
-        diff_nopause = (end.tv_sec - start.tv_sec)
-                + (end.tv_usec - start.tv_usec) * 0.000001;
-        diff = diff_nopause - pausecompensate;
+    return diff;
+  }
 
-        return diff;
-    }
+  // Pause time tracking
+  void pause() { startpause = getTimeAsDouble(); }
 
+  // Continue time tracking
+  void contin() {
+    double endpause;
+    double diff;
+    endpause = getTimeAsDouble();
 
-
-    // Pause time tracking
-    void pause() {
-        gettimeofday(&startpause, 0);
-    }
-
-    // Continue time tracking
-    void contin() {
-        struct timeval endpause;
-        double   diff;
-        gettimeofday(&endpause, 0);
-
-        diff = (endpause.tv_sec - startpause.tv_sec)
-                + (endpause.tv_usec - startpause.tv_usec) * 0.000001;
-        pausecompensate = pausecompensate + diff;
-
-    }
-
-
+    diff = endpause - startpause;
+    pausecompensate = pausecompensate + diff;
+  }
 };
 Timer g_timer;
-
 
 #endif

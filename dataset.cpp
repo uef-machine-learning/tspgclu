@@ -484,7 +484,7 @@ DataSet *read_ascii_dataset(const char *fname) {
   float buf;
   FILE *fp;
   int max_chars = 100000;
-  char line[max_chars + 1];
+  char line[100000 + 1];
   char *pbuf;
   int i_elem = 0;
   int dim = 0;

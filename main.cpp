@@ -15,7 +15,7 @@
 #include "contrib/argtable3.h"
 
 
-#ifdef defined(_POSIX_)
+#ifdef _POSIX_
 #include <execinfo.h>
 #include <signal.h>
 #endif
