@@ -14,6 +14,7 @@ if os.name == 'nt':
 	cargs = [
 	'/std:c++11',
 	'/permissive-',
+	'/W0',
 	'/D_PYTHON_LIB'
 	]
 else:

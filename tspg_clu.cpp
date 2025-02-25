@@ -413,7 +413,7 @@ int *TSPclu<ORACLE>::clusterTSPg(nnGraph *g, int k, vector<vector<float>> *centr
     assert(node->nearest->id < g->size && node->nearest->id >= 0);
     assert(node->nearest_id == node->nearest->id);
 
-    mergeOrder.emplace_back(std::vector<float>{node->id, node->nearest_id, node->nearest_dist, newstash});
+    mergeOrder.emplace_back(std::vector<float>{static_cast<float>(node->id), static_cast<float>(node->nearest_id), node->nearest_dist, static_cast<float>(newstash)});
     nngMergeNodes(g, H, node->id, node->nearest_id);
 
     num_clu--;

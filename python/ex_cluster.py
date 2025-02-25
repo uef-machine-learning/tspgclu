@@ -17,7 +17,9 @@ def show_clusters_2d(x,labels,numclu):
 def example_vec(ds,numclu):
 	# For higher quality:
 	#  - increase number of tsp paths (num_tsp), (in range [2,100])
-	labels,mergeOrder = tspg.tspg(ds,numclu,distance="l2",num_tsp=5,dtype="vec")
+	# Needs ds input in python list format
+	labels,mergeOrder = tspg.tspg(ds.tolist(),numclu,distance="l2",num_tsp=5,dtype="vec")
+	
 	show_clusters_2d(ds,labels,numclu)
 
 x=np.loadtxt('data/s1.txt')
