@@ -19,7 +19,7 @@ git clone https://github.com/uef-machine-learning/tspgclu.git
 cd tspgclu
 pip install -r requirements.txt
 pip install .
-python/api_example.py
+python python/ex_cluster.py
 ```
 
 ## Examples
@@ -30,7 +30,6 @@ See ex_* files in directory python/
 
 
 ```py
-#!/usr/bin/env python
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -39,16 +38,19 @@ import tspg
 def show_clusters_2d(x,labels,numclu):
 	colormap = plt.cm.gist_ncar
 	colorst = [colormap(i) for i in np.linspace(0, 0.9,numclu)]
+	# print(colorst)
 	u_labels = np.unique(labels)
 	for i in u_labels:
 		plt.scatter(x[labels == i , 0] , x[labels == i , 1] , label = i, color = colorst[i-1])
 	plt.show()
 
-# Fast version using built in distance functions written in C:
+# Fast version using built in distance functions written in C++:
 def example_vec(ds,numclu):
 	# For higher quality:
 	#  - increase number of tsp paths (num_tsp), (in range [2,100])
-	labels,mergeOrder = tspg.tspg(ds,numclu,distance="l2",num_tsp=5,dtype="vec")
+	# Needs ds input in python list format
+	labels,mergeOrder = tspg.tspg(ds.tolist(),numclu,distance="l2",num_tsp=5,dtype="vec")
+	
 	show_clusters_2d(ds,labels,numclu)
 
 x=np.loadtxt('data/s1.txt')
@@ -64,7 +66,7 @@ See [python/ex_dendogram.py](/python/ex_dendogram.py)
 ```py
 ...
 ds = np.genfromtxt('data/s1_small.txt')
-labels,mergeOrder = tspg.tspg(ds,1,distance="l2",num_tsp=5,dtype="vec")
+labels,mergeOrder = tspg.tspg(ds.tolist(),1,distance="l2",num_tsp=5,dtype="vec")
 
 mergeOrder_scipy = mergeOrderToScipyFormat(mergeOrder)
 
@@ -89,23 +91,22 @@ plt.show()
 ### Getting the TSP graph
 (file python/ex_create_graph.py)
 ```py
-#!/usr/bin/env python
-
 import numpy as np
 import matplotlib.pyplot as plt
-
 import tspg
 x=np.loadtxt('data/s1_small.txt')
-# the graph is reprecented as num_tsp different linear orderings between the data points
-paths = tspg.create_graph(x,distance="l2",num_tsp=4)
 
-points=x
+# the graph is represented as num_tsp different linear orderings between the data x
+paths = tspg.create_graph(x.tolist(),distance="l2",num_tsp=4)
+
 plt.figure(figsize=(6, 6))
-plt.scatter(points[:, 0], points[:, 1], marker='o', color='b')
+plt.scatter(x[:, 0], x[:, 1], marker='o', color='b')
+
 for tsp in paths:
 	for i in range(0,len(tsp)-1):
 		# Draw line betwen consequtive points according the order in tsp  
-		plt.plot([points[tsp[i],0], points[tsp[i+1],0]] , [points[tsp[i],1], points[tsp[i+1],1]], 'k-')
+		plt.plot([x[tsp[i],0], x[tsp[i+1],0]] , [x[tsp[i],1], x[tsp[i+1],1]], 'k-')
+
 plt.title("The TSP graph")
 plt.show()
 ```

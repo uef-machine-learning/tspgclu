@@ -13,7 +13,7 @@ def show_clusters_2d(x,labels,numclu):
 		plt.scatter(x[labels == i , 0] , x[labels == i , 1] , label = i, color = colorst[i-1])
 	plt.show()
 
-# Fast version using built in distance functions written in C++:
+# Fast version using built in distance functions written in C:
 def example_vec(ds,numclu):
 	# For higher quality:
 	#  - increase number of tsp paths (num_tsp), (in range [2,100])

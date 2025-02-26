@@ -6,7 +6,6 @@ import random
 
 from tspg import tspg_generic
 
-#Only needed in case of string distance:
 # pip install rapidfuzz
 from rapidfuzz.distance import Levenshtein
 
@@ -19,10 +18,6 @@ class EditDistance:
 		d = float(d*d)
 		return d
 		
-# Takes around 113 seconds for a 2D dataset size 100k:
-# x=np.loadtxt('data/b2.txt')
-# example_generic(x,100)
-
 def example_generic_strings(x,numclu):
 	dist = EditDistance(x)
 	labels = tspg_generic(dist,numclu,num_tsp=5)

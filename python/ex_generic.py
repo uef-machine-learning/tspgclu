@@ -4,12 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import random
 
-from tspg import tspg
 from tspg import tspg_generic
-
-#Only needed in case of string distance:
-# pip install rapidfuzz
-from rapidfuzz.distance import Levenshtein
 
 def show_clusters_2d(x,labels,numclu):
 	colormap = plt.cm.gist_ncar
@@ -22,18 +17,6 @@ def show_clusters_2d(x,labels,numclu):
 		plt.scatter(x[labels == i , 0] , x[labels == i , 1] , label = i, color = colorst[i-1])
 	plt.show()
 
-
-# Fast version using built in distance functions written in C:
-def example_vec(ds,numclu):
-	# For higher quality:
-	#  - increase number of tsp paths (num_tsp), (in range [2,100])
-	
-	labels,mergeOrder = tspg(ds,numclu,distance="l2",num_tsp=5,dtype="vec")
-	# print(labels)
-	show_clusters_2d(ds,labels,numclu)
-
-x=np.loadtxt('data/s1.txt')
-example_vec(x,15)
 
 # Slower version using distance function provided by python:
 # Can work with any kind of distance.
@@ -57,10 +40,12 @@ class DistanceMeasureL2:
 		
 def example_generic(x,numclu):
 	dist = DistanceMeasureL2(x)
-	mergeOrder = tspg_generic(dist,numclu,num_tsp=5)
+	labels = tspg_generic(dist,numclu,num_tsp=5)
 	# print(labels)
 	show_clusters_2d(x,labels,numclu)
 	
+x=np.loadtxt('data/s1.txt')
+example_generic(x,15)
 
 # Takes around 113 seconds for a 2D dataset size 100k:
 # x=np.loadtxt('data/b2.txt')
