@@ -32,6 +32,11 @@ DataSet *g_data = NULL;
 
 float *g_distance(int a, int b) { distance(g_data, a, b); }
 
+extern "C" {
+// TODO: Create .h file
+DataSet *pyToDataset(PyObject *py_v);
+}
+
 #include <Python.h>
 #include <cstring>
 #include <cmath>
@@ -84,27 +89,33 @@ PyObject *py_TSPgCluster(PyObject *py_v, int num_clusters, int num_tsp, int dfun
   printf("py_TSPgClu\n");
   g_timer.tick();
 
-  int N = PyList_Size(py_v);
-  PyObject *vec1 = PyList_GetItem(py_v, 0);
-  int D = PyList_Size(vec1);
-  printf("N=%d D=%d\n", N, D);
-  DataSet *data = init_DataSet(N, D);
+  // int N = PyList_Size(py_v);
+  // PyObject *vec1 = PyList_GetItem(py_v, 0);
+  // int D = PyList_Size(vec1);
+  // printf("N=%d D=%d\n", N, D);
+  // DataSet *data = init_DataSet(N, D);
 
-  for (int i = 0; i < N; i++) {
-    PyObject *vec = PyList_GetItem(py_v, i);
-    for (int j = 0; j < D; j++) {
-      PyObject *pyval = PyList_GetItem(vec, j);
-      float val = (float)PyFloat_AsDouble(pyval);
-      set_val(data, i, j, val);
-
-      if (i < 10) {
-        printf(" %f", val);
-      }
-    }
-    if (i < 10) {
-      printf("\n");
-    }
+  DataSet *data = pyToDataset(py_v);
+  if (data == NULL) {
+    return NULL;
   }
+  int N = data->size;
+
+  // for (int i = 0; i < N; i++) {
+  // PyObject *vec = PyList_GetItem(py_v, i);
+  // for (int j = 0; j < D; j++) {
+  // PyObject *pyval = PyList_GetItem(vec, j);
+  // float val = (float)PyFloat_AsDouble(pyval);
+  // set_val(data, i, j, val);
+
+  // if (i < 10) {
+  // printf(" %f", val);
+  // }
+  // }
+  // if (i < 10) {
+  // printf("\n");
+  // }
+  // }
 
   g_options.verbose = 2;
   g_options.costf = 5;
@@ -220,7 +231,8 @@ static PyMethodDef TSPgCluMethods[] = {
 
     {"tspg", (PyCFunction)tspg_py, METH_VARARGS | METH_KEYWORDS,
      "Cluster using TSP-graph & Ward's method."},
-    {"create_graph", (PyCFunction)tspg_create_graph_py, METH_VARARGS | METH_KEYWORDS, "Create a TSP graph"},
+    {"create_graph", (PyCFunction)tspg_create_graph_py, METH_VARARGS | METH_KEYWORDS,
+     "Create a TSP graph"},
     {"tspg_generic", (PyCFunction)tspg_generic_py, METH_VARARGS | METH_KEYWORDS,
      "Cluster using TSP-graph & Ward's method, using python provided distance function."},
     {NULL, NULL, 0, NULL}};
@@ -244,40 +256,92 @@ PyMODINIT_FUNC PyInit_tspg(void) {
   return m;
 }
 
+// Can take python list or numpy 2d array as parameter.
 DataSet *pyToDataset(PyObject *py_v) {
+  // Using ChatGPT, converted old version of this function (PyList interface) to use PySequence
+  printf("Convert python object to C DataSet*\n");
 
-  printf("pyToDataset\n");
-  if (!PyList_Check(py_v)) {
-    PyErr_SetString(PyExc_TypeError, "Input must be a list");
+  // Verify outer sequence
+  if (!PySequence_Check(py_v)) {
+    PyErr_SetString(PyExc_TypeError, "Input must be a sequence (e.g., list or tuple)");
     return NULL;
   }
 
-  int N = PyList_Size(py_v);
-  PyObject *vec1 = PyList_GetItem(py_v, 0);
-  int D = PyList_Size(vec1);
-  printf("N=%d D=%d\n", N, D);
-  DataSet *data = init_DataSet(N, D);
-
-  for (int i = 0; i < N; i++) {
-    PyObject *vec = PyList_GetItem(py_v, i);
-    // if (!PyList_Check(vec)) {
-    // PyErr_SetString(PyExc_TypeError, "Inner elements must be lists");
-    // return NULL;
-    // }
-
-    for (int j = 0; j < D; j++) {
-      PyObject *pyval = PyList_GetItem(vec, j);
-      float val = (float)PyFloat_AsDouble(pyval);
-      set_val(data, i, j, val);
-
-      if (i < 10) {
-        printf(" %f", val);
-      }
-    }
-    if (i < 10) {
-      printf("\n");
-    }
+  Py_ssize_t N = PySequence_Size(py_v);
+  if (N <= 0) {
+    PyErr_SetString(PyExc_ValueError, "Empty or invalid sequence");
+    return NULL;
   }
+
+  // Get first element to determine D
+  PyObject *vec1 = PySequence_GetItem(py_v, 0); // new reference
+  if (!vec1)
+    return NULL;
+  if (!PySequence_Check(vec1)) {
+    Py_DECREF(vec1);
+    PyErr_SetString(PyExc_TypeError, "Inner elements must be sequences");
+    return NULL;
+  }
+
+  Py_ssize_t D = PySequence_Size(vec1);
+  Py_DECREF(vec1);
+
+  printf("V222! N=%zd D=%zd\n", N, D);
+  DataSet *data = init_DataSet((int)N, (int)D);
+  if (!data) {
+    PyErr_SetString(PyExc_MemoryError, "Failed to allocate DataSet");
+    return NULL;
+  }
+
+  // Iterate through outer and inner sequences
+  for (Py_ssize_t i = 0; i < N; i++) {
+    PyObject *vec = PySequence_GetItem(py_v, i); // new ref
+    if (!vec) {
+      free_DataSet(data);
+      return NULL;
+    }
+
+    if (!PySequence_Check(vec)) {
+      Py_DECREF(vec);
+      PyErr_SetString(PyExc_TypeError, "Inner elements must be sequences");
+      free_DataSet(data);
+      return NULL;
+    }
+
+    Py_ssize_t inner_len = PySequence_Size(vec);
+    if (inner_len != D) {
+      Py_DECREF(vec);
+      PyErr_Format(PyExc_ValueError, "Row %zd has length %zd, expected %zd", i, inner_len, D);
+      free_DataSet(data);
+      return NULL;
+    }
+
+    for (Py_ssize_t j = 0; j < D; j++) {
+      PyObject *pyval = PySequence_GetItem(vec, j); // new ref
+      if (!pyval) {
+        Py_DECREF(vec);
+        free_DataSet(data);
+        return NULL;
+      }
+
+      double dv = PyFloat_AsDouble(pyval);
+      Py_DECREF(pyval);
+      if (PyErr_Occurred()) {
+        Py_DECREF(vec);
+        free_DataSet(data);
+        return NULL;
+      }
+
+      float val = (float)dv;
+      set_val(data, (int)i, (int)j, val);
+
+      // if (i < 10) printf(" %f", val);
+    }
+
+    // if (i < 10) printf("\n");
+    Py_DECREF(vec);
+  }
+
   return data;
 }
 
@@ -291,8 +355,8 @@ static PyObject *tspg_create_graph_py(PyObject *self, PyObject *args, PyObject *
   PyObject *ret;
   const char *kwlist[] = {"v", "num_tsp", "dtype", "distance", NULL};
 
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|iss", const_cast<char**>(kwlist), &py_v, &num_tsp, &type,
-                                   &distance)) {
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|iss", const_cast<char **>(kwlist), &py_v,
+                                   &num_tsp, &type, &distance)) {
     return NULL;
   }
 
@@ -379,7 +443,7 @@ static PyObject *tspg_py(PyObject *self, PyObject *args, PyObject *kwargs) {
     }
   }
 
-  printf("tspg_py 0020\n");
+  printf("tspg_py 0030\n");
 
   ret = py_TSPgCluster(py_v, num_clusters, num_tsp, dfunc);
 
