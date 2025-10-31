@@ -441,7 +441,7 @@ int *TSPclu<ORACLE>::clusterTSPg(nnGraph *g, int k, vector<vector<float>> *centr
       vector<float> v1;
       for (int i_dim = 0; i_dim < oracle->dimensionality; i_dim++) {
         v1.push_back(node->mean[i_dim]);
-        printf("x (%f %f) ", node->mean[i_dim], v1[0]);
+        // printf("x (%f %f) ", node->mean[i_dim], v1[0]);
         // (*centroids)[cluid - 1][i_dim] = node->mean[i_dim];
       }
       cent.push_back(v1);
@@ -451,7 +451,7 @@ int *TSPclu<ORACLE>::clusterTSPg(nnGraph *g, int k, vector<vector<float>> *centr
   }
 
   printf("FINAL=1 time=%f ", g_timer.get_time());
-  graph_stat(g);
+  // graph_stat(g);
   printf("\n");
   delete H;
 

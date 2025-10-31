@@ -42,6 +42,7 @@ nnGraph *init_nnGraph(int numNodes) {
     // gItem*
   }
   g->size = numNodes;
+  g->sizeAlloc = numNodes;
   return g;
 }
 
@@ -49,7 +50,7 @@ void dealloc_nnGraph(nnGraph *g) {
   // nnGraph *g = (nnGraph *)malloc(sizeof(nnGraph));
   // g->nodes = (gNode *)malloc(sizeof(gNode) * numNodes);
 
-  for (int i = 0; i < g->size; i++) {
+  for (int i = 0; i < g->sizeAlloc; i++) {
     for (auto gi : *(g->nodes[i].nset)) {
       free(gi);
     }
@@ -231,30 +232,6 @@ void write_nngraph_to_file(nnGraph *g, const char *fn) {
       fprintf(fp, " %d", gi->id);
     }
     for (int j = 0; j < num_neigh; j++) {
-      // gItem *gi = (gItem *)ll_get_item(node->neighbors, j);
-      gItem *gi = nng_get_neighbor2(g, i, j);
-      fprintf(fp, " %f", gi->dist);
-    }
-
-    fprintf(fp, "\n");
-  }
-  fclose(fp);
-}
-
-void write_nngraph_to_file_old(nnGraph *g, const char *fn) {
-  FILE *fp;
-  fp = fopen(fn, "w");
-  gNode *node;
-  for (int i = 0; i < g->size; i++) {
-    node = &g->nodes[i];
-    fprintf(fp, "%d %d", node->id, node->neighbors->size);
-    for (int j = 0; j < node->neighbors->size; j++) {
-      // gItem *gi = (gItem *)ll_get_item(node->neighbors, j);
-      gItem *gi = nng_get_neighbor2(g, i, j);
-
-      fprintf(fp, " %d", gi->id);
-    }
-    for (int j = 0; j < node->neighbors->size; j++) {
       // gItem *gi = (gItem *)ll_get_item(node->neighbors, j);
       gItem *gi = nng_get_neighbor2(g, i, j);
       fprintf(fp, " %f", gi->dist);

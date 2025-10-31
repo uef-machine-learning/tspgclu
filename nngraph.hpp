@@ -121,6 +121,7 @@ typedef struct gNode {
 
 typedef struct nnGraph {
   int size;
+  int sizeAlloc;
   int cur_iter;
   /*void * content;*/
   /*linkedListNode* next;*/

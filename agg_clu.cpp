@@ -42,7 +42,7 @@ void graph_stat(nnGraph *g) {
     }
   }
   float edges_per_node = edge_count / ((float)g->size);
-  printf("edge_count=%ld edges_per_node=%f", edge_count, edges_per_node);
+  printf("edge_count=%ld edges_per_node=%f %ld", edge_count, edges_per_node, g->size);
 }
 
 // refine/prune:
@@ -712,6 +712,7 @@ int *cluster_tspg(DataSet *data, nnGraph *g, int k, vector<vector<float>> *centr
     nng_merge_nodes(g, H, node->id, node->nearest_id);
 
     num_clu--;
+    // g->size = g->size -1;
 
     if (g_options.time_limit > 0 && g_timer.get_time() > g_options.time_limit) {
       printf("Exit due to time limit\n");
