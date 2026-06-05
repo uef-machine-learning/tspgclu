@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -18,11 +19,11 @@ def example_vec(ds,numclu):
 	# For higher quality:
 	#  - increase number of tsp paths (num_tsp), (in range [2,100])
 	# Needs ds input in python list format
-	labels,mergeOrder = tspg.tspg(ds.tolist(),numclu,distance="l2",num_tsp=5,dtype="vec")
+	labels,mergeOrder = tspg.tspg(ds,numclu,distance="l2",num_tsp=5,dtype="vec")
 	
 	show_clusters_2d(ds,labels,numclu)
 
-x=np.loadtxt('data/s1.txt')
+x=np.loadtxt(os.path.join(os.path.dirname(__file__), '../data/s1.txt'))
 
 example_vec(x,15)
 

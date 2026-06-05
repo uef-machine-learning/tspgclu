@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 import random
@@ -35,7 +36,7 @@ def example_generic_strings(x,numclu):
 			print(x[j],end=" ")
 		print("")
 		
-infn = "data/birkbeckU.txt"
+infn = os.path.join(os.path.dirname(__file__), '../data/birkbeckU.txt')
 f = open(infn, "r")
 x = f.read().splitlines()
 example_generic_strings(x,50)

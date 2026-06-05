@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.cluster.hierarchy import dendrogram
@@ -25,8 +26,8 @@ def mergeOrderToScipyFormat(mergeOrder):
 	
 # np.random.seed(23423)
 # ds = np.random.rand(30, 2)
-ds = np.genfromtxt('data/s1_small.txt')
-labels,mergeOrder = tspg.tspg(ds.tolist(),1,distance="l2",num_tsp=5,dtype="vec")
+ds = np.genfromtxt(os.path.join(os.path.dirname(__file__), '../data/s1_small.txt'))
+labels,mergeOrder = tspg.tspg(ds,1,distance="l2",num_tsp=5,dtype="vec")
 
 mergeOrder_scipy = mergeOrderToScipyFormat(mergeOrder)
 

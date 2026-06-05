@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 import tspg
-x=np.loadtxt('data/s1_small.txt')
+x=np.loadtxt(os.path.join(os.path.dirname(__file__), '../data/s1_small.txt'))
 
 # the graph is reprecented as num_tsp different linear orderings between the data x
-paths = tspg.create_graph(x.tolist(),distance="l2",num_tsp=4)
+paths = tspg.create_graph(x,distance="l2",num_tsp=4)
 
 plt.figure(figsize=(6, 6))
 plt.scatter(x[:, 0], x[:, 1], marker='o', color='b')

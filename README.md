@@ -48,8 +48,7 @@ def show_clusters_2d(x,labels,numclu):
 def example_vec(ds,numclu):
 	# For higher quality:
 	#  - increase number of tsp paths (num_tsp), (in range [2,100])
-	# Needs ds input in python list format
-	labels,mergeOrder = tspg.tspg(ds.tolist(),numclu,distance="l2",num_tsp=5,dtype="vec")
+	labels,mergeOrder = tspg.tspg(ds,numclu,distance="l2",num_tsp=5,dtype="vec")
 	
 	show_clusters_2d(ds,labels,numclu)
 
@@ -66,7 +65,7 @@ See [python/ex_dendogram.py](/python/ex_dendogram.py)
 ```py
 ...
 ds = np.genfromtxt('data/s1_small.txt')
-labels,mergeOrder = tspg.tspg(ds.tolist(),1,distance="l2",num_tsp=5,dtype="vec")
+labels,mergeOrder = tspg.tspg(ds,1,distance="l2",num_tsp=5,dtype="vec")
 
 mergeOrder_scipy = mergeOrderToScipyFormat(mergeOrder)
 
@@ -97,7 +96,7 @@ import tspg
 x=np.loadtxt('data/s1_small.txt')
 
 # the graph is represented as num_tsp different linear orderings between the data x
-paths = tspg.create_graph(x.tolist(),distance="l2",num_tsp=4)
+paths = tspg.create_graph(x,distance="l2",num_tsp=4)
 
 plt.figure(figsize=(6, 6))
 plt.scatter(x[:, 0], x[:, 1], marker='o', color='b')

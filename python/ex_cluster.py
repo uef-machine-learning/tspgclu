@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -23,7 +24,7 @@ def example_vec(ds,numclu):
 	
 	show_clusters_2d(ds,labels,numclu)
 
-x=np.loadtxt('data/s1.txt')
+x=np.loadtxt(os.path.join(os.path.dirname(__file__), '../data/s1.txt'))
 
 example_vec(x,15)
 

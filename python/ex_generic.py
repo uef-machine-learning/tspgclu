@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 import random
@@ -44,7 +45,7 @@ def example_generic(x,numclu):
 	# print(labels)
 	show_clusters_2d(x,labels,numclu)
 	
-x=np.loadtxt('data/s1.txt')
+x=np.loadtxt(os.path.join(os.path.dirname(__file__), '../data/s1.txt'))
 example_generic(x,15)
 
 # Takes around 113 seconds for a 2D dataset size 100k:
