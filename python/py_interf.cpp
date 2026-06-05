@@ -67,21 +67,20 @@ PyObject *array_to_py(int *arr, int N) {
 }
 
 PyObject *merge_order_to_py(std::vector<std::vector<float>> mo) {
-  // Convert c array to python format
-  // printf("array_to_py size=%d\n", N);
   PyObject *pyarr = PyList_New(mo.size());
-  for (int i = 0; i < mo.size(); i++) {
-    PyObject *arr2 = PyList_New(4);
+  for (int i = 0; i < (int)mo.size(); i++) {
+    PyObject *arr2 = PyList_New(5);
     PyList_SetItem(arr2, 0, Py_BuildValue("i", static_cast<int>(mo[i][0])));
     PyList_SetItem(arr2, 1, Py_BuildValue("i", static_cast<int>(mo[i][1])));
     PyList_SetItem(arr2, 2, Py_BuildValue("f", mo[i][2]));
     PyList_SetItem(arr2, 3, Py_BuildValue("i", static_cast<int>(mo[i][3])));
+    PyList_SetItem(arr2, 4, Py_BuildValue("i", static_cast<int>(mo[i][4])));
     PyList_SetItem(pyarr, i, arr2);
   }
   return pyarr;
 }
 
-PyObject *py_TSPgCluster(PyObject *py_v, int num_clusters, int num_tsp, int dfunc) {
+PyObject *py_TSPgCluster(PyObject *py_v, int num_clusters, int num_tsp, int dfunc, int store_representatives) {
 
   PyObject *ret;
   PyObject *py_labels;
@@ -131,6 +130,7 @@ PyObject *py_TSPgCluster(PyObject *py_v, int num_clusters, int num_tsp, int dfun
   g_options.verbose = 0;
   g_options.gtype = RPDIV;
   g_options.mean_calculation = 0;
+  g_options.store_representatives = store_representatives;
 
   printf("Algorithm: TSPg-clu\n");
 
@@ -415,13 +415,13 @@ static PyObject *tspg_py(PyObject *self, PyObject *args, PyObject *kwargs) {
   char *type = NULL;
   char *distance = NULL;
   int dfunc = D_L2;
+  int store_representatives = 0;
 
   PyObject *ret;
-  // static const char *kwlist[] = {"v", "num_clusters", "num_tsp", "dtype", "distance", NULL};
-  const char *kwlist[] = {"v", "num_clusters", "num_tsp", "dtype", "distance", NULL};
+  const char *kwlist[] = {"v", "num_clusters", "num_tsp", "dtype", "distance", "store_representatives", NULL};
 
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "Oi|iss", const_cast<char **>(kwlist), &py_v,
-                                   &num_clusters, &num_tsp, &type, &distance)) {
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "Oi|issi", const_cast<char **>(kwlist), &py_v,
+                                   &num_clusters, &num_tsp, &type, &distance, &store_representatives)) {
     return NULL;
   }
 
@@ -445,7 +445,7 @@ static PyObject *tspg_py(PyObject *self, PyObject *args, PyObject *kwargs) {
 
   printf("tspg_py 0030\n");
 
-  ret = py_TSPgCluster(py_v, num_clusters, num_tsp, dfunc);
+  ret = py_TSPgCluster(py_v, num_clusters, num_tsp, dfunc, store_representatives);
 
   return ret;
 }

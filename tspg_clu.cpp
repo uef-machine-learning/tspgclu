@@ -413,8 +413,22 @@ int *TSPclu<ORACLE>::clusterTSPg(nnGraph *g, int k, vector<vector<float>> *centr
     assert(node->nearest->id < g->size && node->nearest->id >= 0);
     assert(node->nearest_id == node->nearest->id);
 
-    mergeOrder.emplace_back(std::vector<float>{static_cast<float>(node->id), static_cast<float>(node->nearest_id), node->nearest_dist, static_cast<float>(newstash)});
-    nngMergeNodes(g, H, node->id, node->nearest_id);
+    int   merge_p1   = node->id;
+    int   merge_p2   = node->nearest_id;
+    float merge_dist = node->nearest_dist;
+
+    nngMergeNodes(g, H, merge_p1, merge_p2);
+
+    int rep = (mean_calculation && g_options.store_representatives)
+              ? g->nodes[merge_p1].representative_id
+              : -1;
+    mergeOrder.emplace_back(std::vector<float>{
+        static_cast<float>(merge_p1),
+        static_cast<float>(merge_p2),
+        merge_dist,
+        static_cast<float>(newstash),
+        static_cast<float>(rep)
+    });
 
     num_clu--;
 
@@ -726,6 +740,19 @@ void TSPclu<ORACLE>::nngMergeNodes(nnGraph *g, nodeHeap *H, int p1, int p2) {
   if (mean_calculation) {
     for (int i_dim = 0; i_dim < oracle->dimensionality; i_dim++) {
       p1node->mean[i_dim] = p1node->mean[i_dim] * w + p2node->mean[i_dim] * (1 - w);
+    }
+
+    if (g_options.store_representatives) {
+      int rep1 = p1node->representative_id;
+      int rep2 = p2node->representative_id;
+      float d1 = 0.0f, d2 = 0.0f;
+      for (int i_dim = 0; i_dim < oracle->dimensionality; i_dim++) {
+        float diff1 = oracle->getVecValue(rep1, i_dim) - p1node->mean[i_dim];
+        float diff2 = oracle->getVecValue(rep2, i_dim) - p1node->mean[i_dim];
+        d1 += diff1 * diff1;
+        d2 += diff2 * diff2;
+      }
+      p1node->representative_id = (d1 <= d2) ? rep1 : rep2;
     }
   }
 

@@ -105,6 +105,7 @@ typedef struct gNode {
   float *mean;
 
   float internalSum;
+  int representative_id;
 
   // std::set<gItem *> *nset;
   // Neighbors as set  for fast check if is neighbor or not

@@ -30,6 +30,7 @@ nnGraph *init_nnGraph(int numNodes) {
     g->nodes[i].internalSum = 0.0;
 
     g->nodes[i].id = i;
+    g->nodes[i].representative_id = i;
     g->nodes[i].visited = -1;
     g->nodes[i].maxNeighbors = maxNeighbors;
 

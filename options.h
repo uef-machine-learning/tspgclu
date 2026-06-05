@@ -26,6 +26,7 @@ struct knng_options {
     int time_limit;
     int uncle_adjustment;
     int verbose;
+    int store_representatives;
 };
 
 
